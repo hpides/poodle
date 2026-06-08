@@ -1,0 +1,41 @@
+{
+  "ms_per_data_item": 4,
+  "rounds": [
+    {
+      "round": 1,
+      "data_items": 50,
+      "models": [
+        { "name": "model-1",  "proxy_score": 0.61 },
+        { "name": "model-2",  "proxy_score": 0.44 },
+        { "name": "model-3",  "proxy_score": 0.78 },
+        { "name": "model-4",  "proxy_score": 0.33 },
+        { "name": "model-5",  "proxy_score": 0.55 },
+        { "name": "model-6",  "proxy_score": 0.82 },
+        { "name": "model-7",  "proxy_score": 0.27 },
+        { "name": "model-8",  "proxy_score": 0.69 },
+        { "name": "model-9",  "proxy_score": 0.41 },
+        { "name": "model-10", "proxy_score": 0.73 }
+      ]
+    },
+    {
+      "round": 2,
+      "data_items": 200,
+      "models": [
+        { "name": "model-1",  "proxy_score": 0.62 },
+        { "name": "model-3",  "proxy_score": 0.75 },
+        { "name": "model-6",  "proxy_score": 0.85 },
+        { "name": "model-8",  "proxy_score": 0.83 },
+        { "name": "model-10", "proxy_score": 0.67 }
+      ]
+    },
+    {
+      "round": 3,
+      "data_items": 800,
+      "models": [
+        { "name": "model-3",  "proxy_score": 0.91 },
+        { "name": "model-6",  "proxy_score": 0.87 },
+        { "name": "model-8",  "proxy_score": 0.79 }
+      ]
+    }
+  ]
+}
