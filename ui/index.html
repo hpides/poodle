@@ -774,7 +774,7 @@
     <button class="btn btn-success" style="position:absolute; left:50%; transform:translateX(-50%);" onclick="startAll()">▶▶ Start All</button>
   </header>
   <div style="flex:1; overflow-y:auto; padding:28px;">
-    <div id="model-dev-grid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:18px; align-items:start;">
+    <div id="model-dev-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:18px; align-items:start;">
       <!-- cards injected by JS -->
     </div>
   </div>
@@ -1555,15 +1555,17 @@ function showToast(msg) {
 
 // ── Model Dev detail page ─────────────────────────────────────────────────
 const cardData = {
+  'baseline-single': { models: [] },
   'baseline': { models: [] },
   'proxy':    { models: [] },
   'proxy-sh': { rounds: [], ms_per_data_item: 4 },
 };
 
 const DEV_CARDS = [
-  { id: 'baseline', icon: '📊', title: 'Baseline',            api: '/api/baseline'         },
-  { id: 'proxy',    icon: '🎯', title: 'Proxy Scoring',       api: '/api/proxy-scoring'    },
-  { id: 'proxy-sh', icon: '🎯', title: 'Proxy Scoring + SH',  api: '/api/proxy-scoring-sh' },
+  { id: 'baseline-single', icon: '📊', title: 'Baseline',           api: '/api/baseline-single'  },
+  { id: 'baseline',        icon: '📊', title: 'Baseline Search',    api: '/api/baseline'         },
+  { id: 'proxy',           icon: '🎯', title: 'Proxy Scoring',      api: '/api/proxy-scoring'    },
+  { id: 'proxy-sh',        icon: '🎯', title: 'Proxy Scoring + SH', api: '/api/proxy-scoring-sh' },
 ];
 
 async function loadCardData() {
@@ -1689,7 +1691,7 @@ async function runCard(cardId) {
       nameEl.style.fontWeight = '700';
       nameEl.style.color = 'var(--green)';
     }
-    winner.insertAdjacentHTML('beforeend', '<span class="trophy" style="font-size:1rem; margin-left:10px;">🏆</span>');
+    if (!winner.querySelector('.trophy')) winner.insertAdjacentHTML('beforeend', '<span class="trophy" style="font-size:1rem; margin-left:10px;">🏆</span>');
   }
 
   // for proxy: run the winning model for real using baseline data
@@ -1717,6 +1719,7 @@ async function runCard(cardId) {
 }
 
 function startAll() {
+  runCard('baseline-single');
   runCard('baseline');
   runCard('proxy');
   runProxySH();
@@ -1845,7 +1848,7 @@ async function runProxySH() {
     winner.style.borderRadius = '6px';
     const nameEl = winner.querySelector('span:not(.status-dot):not(.model-accuracy)');
     if (nameEl) { nameEl.style.fontWeight = '700'; nameEl.style.color = 'var(--green)'; }
-    winner.insertAdjacentHTML('beforeend', '<span class="trophy" style="font-size:1rem; margin-left:10px;">🏆</span>');
+    if (!winner.querySelector('.trophy')) winner.insertAdjacentHTML('beforeend', '<span class="trophy" style="font-size:1rem; margin-left:10px;">🏆</span>');
 
     // full fine-tuning of winner using baseline data
     const winnerName    = data.rounds[0].models[+winner.dataset.index]?.name;
