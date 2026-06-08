@@ -194,6 +194,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         elif self.path == "/api/measured-results":
             rows = _load_measured_results()
             self._send(200, "application/json", json.dumps(rows).encode())
+        elif self.path == "/api/baseline":
+            bl_path = ROOT / "baseline.json"
+            data = json.loads(bl_path.read_text()) if bl_path.exists() else {"models": []}
+            self._send(200, "application/json", json.dumps(data).encode())
         else:
             self._send(404, "text/plain", b"Not found")
 
