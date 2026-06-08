@@ -1553,26 +1553,31 @@ function showToast(msg) {
 }
 
 // ── Model Dev detail page ─────────────────────────────────────────────────
-let baselineData = { models: [] };
-
-async function loadBaselineData() {
-  const res = await fetch('/api/baseline');
-  baselineData = await res.json();
-}
+const cardData = {
+  'baseline': { models: [] },
+  'proxy':    { models: [] },
+};
 
 const DEV_CARDS = [
-  { id: 'baseline',   icon: '📊', title: 'Baseline' },
-  { id: 'proxy',      icon: '🎯', title: 'Proxy Scoring' },
-  { id: 'proxy-sh',   icon: '🎯', title: 'Proxy Scoring + SH' },
+  { id: 'baseline', icon: '📊', title: 'Baseline',        api: '/api/baseline'      },
+  { id: 'proxy',    icon: '🎯', title: 'Proxy Scoring',   api: '/api/proxy-scoring' },
+  { id: 'proxy-sh', icon: '🎯', title: 'Proxy Scoring + SH', api: null              },
 ];
+
+async function loadCardData() {
+  await Promise.all(
+    DEV_CARDS.filter(c => c.api).map(async c => {
+      const res = await fetch(c.api);
+      cardData[c.id] = await res.json();
+    })
+  );
+}
 
 function buildModelDevPage() {
   const grid = document.getElementById('model-dev-grid');
   grid.innerHTML = '';
   DEV_CARDS.forEach(card => {
-    const models = card.id === 'baseline'
-      ? baselineData.models
-      : baselineData.models.map(m => ({ name: m.name }));  // other cards: name only for now
+    const models = cardData[card.id]?.models ?? cardData['baseline'].models.map(m => ({ name: m.name }));
 
     const items = models.map((m, i) => `
       <li data-index="${i}" style="display:flex; align-items:center; padding:5px 0; border-bottom:1px solid var(--border); list-style:none;">
@@ -1581,9 +1586,9 @@ function buildModelDevPage() {
         <span class="model-accuracy" style="margin-left:auto; font-size:1rem; color:var(--text-muted);"></span>
       </li>`).join('');
 
-    const startBtn = card.id === 'baseline'
-      ? `<button id="baseline-start-btn" class="btn btn-success" style="margin-left:auto; font-size:0.78rem; padding:4px 10px;" onclick="runBaseline()">▶ Start</button>
-         <span id="baseline-timer" style="font-size:1.1rem; color:var(--text-muted); margin-left:8px; font-variant-numeric:tabular-nums;">0.0s</span>`
+    const startBtn = card.api
+      ? `<button id="${card.id}-start-btn" class="btn btn-success" style="margin-left:auto; font-size:0.78rem; padding:4px 10px;" onclick="runCard('${card.id}')">▶ Start</button>
+         <span id="${card.id}-timer" style="font-size:1.1rem; color:var(--text-muted); margin-left:8px; font-variant-numeric:tabular-nums;">0.0s</span>`
       : '';
 
     grid.insertAdjacentHTML('beforeend', `
@@ -1602,12 +1607,12 @@ function buildModelDevPage() {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-async function runBaseline() {
-  const btn = document.getElementById('baseline-start-btn');
-  const list = document.getElementById('list-baseline');
-  const items = list.querySelectorAll('li');
-
-  const timerEl = document.getElementById('baseline-timer');
+async function runCard(cardId) {
+  const models = cardData[cardId].models;
+  const btn     = document.getElementById(`${cardId}-start-btn`);
+  const timerEl = document.getElementById(`${cardId}-timer`);
+  const list    = document.getElementById(`list-${cardId}`);
+  const items   = list.querySelectorAll('li');
 
   // reset
   btn.disabled = true;
@@ -1618,8 +1623,8 @@ async function runBaseline() {
     li.querySelector('.model-accuracy').textContent = '';
     li.style.background = '';
     li.style.borderRadius = '';
-    const trophy = li.querySelector('span[style*="🏆"], span:last-child');
-    if (trophy && trophy.textContent.includes('🏆')) trophy.remove();
+    const trophy = li.querySelector('.trophy');
+    if (trophy) trophy.remove();
     const nameEl = li.querySelector('span:not(.status-dot):not(.model-accuracy)');
     if (nameEl) { nameEl.style.fontWeight = ''; nameEl.style.color = ''; }
   });
@@ -1634,33 +1639,28 @@ async function runBaseline() {
     timerEl.textContent = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
   }, 100);
 
-  for (let i = 0; i < baselineData.models.length; i++) {
-    const model = baselineData.models[i];
-    // always look up the li by data-index since DOM order may have changed
-    const li = list.querySelector(`li[data-index="${i}"]`);
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
+    const li  = list.querySelector(`li[data-index="${i}"]`);
     const dot = li.querySelector('.status-dot');
     const acc = li.querySelector('.model-accuracy');
 
     dot.dataset.status = 'running';
     await sleep(model.processing_time_ms);
     dot.dataset.status = 'done';
-    acc.textContent = `accuracy: ${model.accuracy.toFixed(2)}  ·  ${model.processing_time_ms}ms`;
+    const label = cardId === 'proxy' ? 'proxy score' : 'accuracy';
+    acc.textContent = `${label}: ${model.accuracy.toFixed(2)}  ·  ${model.processing_time_ms}ms`;
 
     // re-sort with FLIP animation
     const allLis = [...list.querySelectorAll('li')];
-
-    // First: record current positions
     const before = new Map(allLis.map(el => [el, el.getBoundingClientRect().top]));
 
-    // Sort DOM
     const done    = allLis.filter(el => el.querySelector('.status-dot').dataset.status === 'done')
-                          .sort((a, b) => baselineData.models[+b.dataset.index].accuracy
-                                        - baselineData.models[+a.dataset.index].accuracy);
+                          .sort((a, b) => models[+b.dataset.index].accuracy - models[+a.dataset.index].accuracy);
     const pending = allLis.filter(el => el.querySelector('.status-dot').dataset.status !== 'done')
                           .sort((a, b) => +a.dataset.index - +b.dataset.index);
     [...done, ...pending].forEach(el => list.appendChild(el));
 
-    // Last + Invert + Play
     allLis.forEach(el => {
       const delta = before.get(el) - el.getBoundingClientRect().top;
       if (delta === 0) return;
@@ -1673,11 +1673,6 @@ async function runBaseline() {
     });
   }
 
-  clearInterval(timerInterval);
-  timerEl.textContent = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
-  btn.disabled = false;
-  btn.textContent = '▶ Start';
-
   // highlight winner
   const winner = list.querySelector('li:first-child');
   if (winner) {
@@ -1689,8 +1684,31 @@ async function runBaseline() {
       nameEl.style.fontWeight = '700';
       nameEl.style.color = 'var(--green)';
     }
-    winner.insertAdjacentHTML('beforeend', '<span style="font-size:1rem; margin-left:10px;">🏆</span>');
+    winner.insertAdjacentHTML('beforeend', '<span class="trophy" style="font-size:1rem; margin-left:10px;">🏆</span>');
   }
+
+  // for proxy: run the winning model for real using baseline data
+  if (cardId === 'proxy') {
+    const winnerLi = list.querySelector('li:first-child');
+    const winnerIndex = +winnerLi.dataset.index;
+    const winnerName  = models[winnerIndex].name;
+    const baselineModel = cardData['baseline'].models.find(m => m.name === winnerName);
+
+    if (baselineModel) {
+      const dot = winnerLi.querySelector('.status-dot');
+      const acc = winnerLi.querySelector('.model-accuracy');
+      dot.dataset.status = 'running';
+      acc.textContent = 'full fine-tuning…';
+      await sleep(baselineModel.processing_time_ms);
+      dot.dataset.status = 'done';
+      acc.textContent = `accuracy: ${baselineModel.accuracy.toFixed(2)}  ·  ${baselineModel.processing_time_ms}ms`;
+    }
+  }
+
+  clearInterval(timerInterval);
+  timerEl.textContent = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
+  btn.disabled = false;
+  btn.textContent = '▶ Start';
 }
 
 const STATUS_CYCLE = ['idle', 'running', 'done'];
@@ -1710,7 +1728,7 @@ function showView(name) {
 }
 
 // ── Init — load models + use-cases first, then scenarios (so selects are populated)
-loadBaselineData().then(() => buildModelDevPage());
+loadCardData().then(() => buildModelDevPage());
 Promise.all([loadModelData(), loadUseCases(), loadMeasuredResults()]).then(() => loadScenarioList());
 </script>
 </body>

@@ -198,6 +198,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             bl_path = ROOT / "baseline.json"
             data = json.loads(bl_path.read_text()) if bl_path.exists() else {"models": []}
             self._send(200, "application/json", json.dumps(data).encode())
+        elif self.path == "/api/proxy-scoring":
+            ps_path = ROOT / "proxy_scoring.json"
+            data = json.loads(ps_path.read_text()) if ps_path.exists() else {"models": []}
+            self._send(200, "application/json", json.dumps(data).encode())
         else:
             self._send(404, "text/plain", b"Not found")
 
