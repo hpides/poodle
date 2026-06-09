@@ -72,7 +72,7 @@ VAL_FRACTION     = 0.2  # 20 % of train used for validation
 # ---------------------------------------------------------------------------
 # Data loading  (reuse existing split layout)
 # ---------------------------------------------------------------------------
-def load_texts_and_labels(root: str, num_splits: int, split: str) -> tuple[list[str], list[int]]:
+def load_texts_and_labels(root, num_splits, split):
     """
     Load `num_splits` numbered sub-directories from root/<split>-500-{0..N-1}/
     Each directory contains pos/ and neg/ sub-folders with .txt review files.
@@ -92,7 +92,7 @@ def load_texts_and_labels(root: str, num_splits: int, split: str) -> tuple[list[
     return texts, labels
 
 
-def make_dataset(tokenizer, texts: list[str], labels: list[int]) -> TensorDataset:
+def make_dataset(tokenizer, texts, labels):
     enc = tokenizer(
         texts,
         truncation=True,
@@ -164,10 +164,10 @@ def evaluate(model, loader, device, has_tti: bool) -> float:
 def fine_tune_model(
     ui_name: str,
     model_id: str,
-    train_texts: list[str],
-    train_labels: list[int],
-    test_texts: list[str],
-    test_labels: list[int],
+    train_texts,
+    train_labels,
+    test_texts,
+    test_labels,
     device: torch.device,
 ) -> dict:
     """Fine-tune one model; return {'accuracy': float, 'processing_time_ms': int}."""
