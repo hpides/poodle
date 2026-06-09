@@ -1595,6 +1595,15 @@ function buildModelDevPage() {
       </li>`).join('');
 
     const onclick = card.id === 'proxy-sh' ? `runProxySH()` : `runCard('${card.id}')`;
+
+    const itemsDropdown = card.id === 'proxy' ? `
+      <select style="margin-left:8px; padding:3px 6px; font-size:0.78rem; width:86px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); cursor:pointer;"
+        onchange="setProxyItems(+this.value)">
+        ${[500,5000].map(v =>
+          `<option value="${v}" ${v === (cardData['proxy']?.data_collection_items ?? 500) ? 'selected' : ''}>${v} items</option>`
+        ).join('')}
+      </select>` : '';
+
     const startBtn = card.api
       ? `<button id="${card.id}-start-btn" class="btn btn-success" style="margin-left:auto; font-size:0.78rem; padding:4px 10px;" onclick="${onclick}">▶ Start</button>
          <span id="${card.id}-timer" style="font-size:1.1rem; color:var(--text-muted); margin-left:8px; font-variant-numeric:tabular-nums;">0.0s</span>`
@@ -1611,9 +1620,7 @@ function buildModelDevPage() {
           ${(() => {
             const total = cardData[card.id]?.data_collection_items ?? 5000;
             const start = cardData[card.id]?.search_start_items ?? total;
-            return start < total
-              ? `<div id="${card.id}-progress-marker" style="position:absolute; top:0; left:${(start/total*100)}%; height:100%; width:2px; background:var(--text); opacity:0.6;"></div>`
-              : `<div id="${card.id}-progress-marker" style="display:none;"></div>`;
+            return `<div id="${card.id}-progress-marker" style="position:absolute; top:0; left:${(start/total*100)}%; height:100%; width:2px; background:var(--text); opacity:0.6; display:${start < total ? 'block' : 'none'};"></div>`;
           })()}
         </div>
         <div id="${card.id}-progress-time" style="font-size:0.78rem; color:var(--text-muted); margin-top:4px; min-height:1em;"></div>
@@ -1624,6 +1631,7 @@ function buildModelDevPage() {
         <div class="section-header">
           <div class="icon">${card.icon}</div>
           <h2>${card.title}</h2>
+          ${itemsDropdown}
           ${startBtn}
         </div>
         ${progressBar}
@@ -1771,7 +1779,7 @@ async function runCard(cardId) {
   _timerIntervals[cardId] = timerInterval;
 
   // animate progress bar before model processing
-  await runProgressBar(cardId, token, abort);
+  const { complete: barComplete } = await runProgressBar(cardId, token, abort);
   if (!tokenActive(cardId, token)) { _onRunEnd(); return; }
 
   for (let i = 0; i < models.length; i++) {
@@ -1822,6 +1830,12 @@ async function runCard(cardId) {
     if (!winner.querySelector('.trophy')) winner.insertAdjacentHTML('beforeend', '<span class="trophy" style="font-size:1rem; margin-left:10px;">🏆</span>');
   }
 
+  // for proxy: wait for full data collection before fine-tuning
+  if (cardId === 'proxy') {
+    await Promise.race([barComplete, abort]);
+    if (!tokenActive(cardId, token)) { _onRunEnd(); return; }
+  }
+
   // for proxy: run the winning model for real using baseline data
   if (cardId === 'proxy') {
     const winnerLi = list.querySelector('li:first-child');
@@ -1862,6 +1876,22 @@ function _onRunEnd() {
   if (_activeRuns === 0) {
     const btn = document.getElementById('start-all-btn');
     if (btn) { btn.className = 'btn btn-success'; btn.textContent = '▶▶ Start All'; }
+  }
+}
+
+function setProxyItems(n) {
+  cardData['proxy'].data_collection_items = n;
+  cardData['proxy'].search_start_items    = 500; // always start search at 500
+  resetProgressBar('proxy');
+  // update marker visibility
+  const marker = document.getElementById('proxy-progress-marker');
+  if (marker) {
+    if (n > 500) {
+      marker.style.display = 'block';
+      marker.style.left = `${(500 / n) * 100}%`;
+    } else {
+      marker.style.display = 'none';
+    }
   }
 }
 
