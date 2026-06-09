@@ -1,5 +1,8 @@
 {
-  "ms_per_data_item": 4,
+  "data_collection_items": 5000,
+  "search_start_items": 500,
+  "labeling_speed": 300,
+  "ms_per_data_item": 1,
   "rounds": [
     {
       "round": 1,

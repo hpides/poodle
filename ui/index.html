@@ -1598,6 +1598,25 @@ function buildModelDevPage() {
          <span id="${card.id}-timer" style="font-size:1.1rem; color:var(--text-muted); margin-left:8px; font-variant-numeric:tabular-nums;">0.0s</span>`
       : '';
 
+    const progressBar = card.api ? `
+      <div style="padding:10px 14px 16px;">
+        <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--text-muted); margin-bottom:4px;">
+          <span id="${card.id}-progress-title">Collecting labeled data…</span>
+          <span id="${card.id}-progress-label">0 / 5000</span>
+        </div>
+        <div style="position:relative; background:var(--surface2); border:1px solid var(--border); border-radius:6px; height:10px; overflow:hidden;">
+          <div id="${card.id}-progress-bar" style="height:100%; width:0%; background:var(--accent); border-radius:6px; transition:none;"></div>
+          ${(() => {
+            const total = cardData[card.id]?.data_collection_items ?? 5000;
+            const start = cardData[card.id]?.search_start_items ?? total;
+            return start < total
+              ? `<div id="${card.id}-progress-marker" style="position:absolute; top:0; left:${(start/total*100)}%; height:100%; width:2px; background:var(--text); opacity:0.6;"></div>`
+              : `<div id="${card.id}-progress-marker" style="display:none;"></div>`;
+          })()}
+        </div>
+        <div id="${card.id}-progress-time" style="font-size:0.78rem; color:var(--text-muted); margin-top:4px; min-height:1em;"></div>
+      </div>` : '';
+
     grid.insertAdjacentHTML('beforeend', `
       <div class="section" style="margin:0;" id="card-${card.id}">
         <div class="section-header">
@@ -1605,6 +1624,7 @@ function buildModelDevPage() {
           <h2>${card.title}</h2>
           ${startBtn}
         </div>
+        ${progressBar}
         <div class="section-body" style="padding:4px 14px 10px;">
           <ul id="list-${card.id}" style="padding:0; margin:0;">${items}</ul>
         </div>
@@ -1613,6 +1633,65 @@ function buildModelDevPage() {
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function resetProgressBar(cardId) {
+  const data    = cardData[cardId];
+  const TOTAL   = data.data_collection_items ?? 5000;
+  const bar     = document.getElementById(`${cardId}-progress-bar`);
+  const label   = document.getElementById(`${cardId}-progress-label`);
+  const titleEl = document.getElementById(`${cardId}-progress-title`);
+  const timeEl  = document.getElementById(`${cardId}-progress-time`);
+  if (bar)     bar.style.width = '0%';
+  if (label)   label.textContent = `0 / ${TOTAL}`;
+  if (titleEl) titleEl.textContent = 'Collecting labeled data…';
+  if (timeEl)  timeEl.textContent = '';
+}
+
+// resolves when search_start_items is reached; bar continues filling in background
+async function runProgressBar(cardId) {
+  const data   = cardData[cardId];
+  const TOTAL  = data.data_collection_items ?? 5000;
+  const START  = data.search_start_items ?? TOTAL;
+  const RATE   = data.labeling_speed ?? 1000;
+  const TICK   = 50;
+  const bar    = document.getElementById(`${cardId}-progress-bar`);
+  const label  = document.getElementById(`${cardId}-progress-label`);
+  const marker = document.getElementById(`${cardId}-progress-marker`);
+  if (!bar) return;
+
+  bar.style.width = '0%';
+  label.textContent = `0 / ${TOTAL}`;
+  const progressStart = Date.now();
+
+  let resolveComplete;
+  const complete = new Promise(r => resolveComplete = r);
+
+  await new Promise(resolveAtStart => {
+    let count = 0;
+    let startResolved = false;
+    const iv = setInterval(() => {
+      count = Math.min(count + RATE * (TICK / 1000), TOTAL);
+      bar.style.width = (count / TOTAL * 100) + '%';
+      label.textContent = `${Math.round(count)} / ${TOTAL}`;
+
+      // unblock model processing when search_start_items reached
+      if (!startResolved && count >= START) {
+        startResolved = true;
+        resolveAtStart();
+      }
+
+      if (count >= TOTAL) {
+        clearInterval(iv);
+        const elapsed = ((Date.now() - progressStart) / 1000).toFixed(1);
+        document.getElementById(`${cardId}-progress-title`).textContent = 'Collecting labeled data';
+        document.getElementById(`${cardId}-progress-time`).textContent = `Done in ${elapsed}s`;
+        resolveComplete();
+      }
+    }, TICK);
+  });
+
+  return { complete };
+}
 
 async function runCard(cardId) {
   const models = cardData[cardId].models;
@@ -1625,6 +1704,7 @@ async function runCard(cardId) {
   btn.disabled = true;
   btn.textContent = '⏳ Running…';
   timerEl.textContent = '0.0s';
+  resetProgressBar(cardId);
   items.forEach(li => {
     li.querySelector('.status-dot').dataset.status = 'idle';
     li.querySelector('.model-accuracy').textContent = '';
@@ -1634,6 +1714,8 @@ async function runCard(cardId) {
     if (trophy) trophy.remove();
     const nameEl = li.querySelector('span:not(.status-dot):not(.model-accuracy)');
     if (nameEl) { nameEl.style.fontWeight = ''; nameEl.style.color = ''; }
+    const accEl2 = li.querySelector('.model-accuracy');
+    if (accEl2) accEl2.style.fontWeight = '';
   });
 
   // restore original order
@@ -1645,6 +1727,9 @@ async function runCard(cardId) {
   const timerInterval = setInterval(() => {
     timerEl.textContent = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
   }, 100);
+
+  // animate progress bar before model processing
+  await runProgressBar(cardId);
 
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
@@ -1687,10 +1772,9 @@ async function runCard(cardId) {
     winner.style.background = 'rgba(74, 222, 128, 0.12)';
     winner.style.borderRadius = '6px';
     const nameEl = winner.querySelector('span:not(.status-dot):not(.model-accuracy)');
-    if (nameEl) {
-      nameEl.style.fontWeight = '700';
-      nameEl.style.color = 'var(--green)';
-    }
+    if (nameEl) { nameEl.style.fontWeight = '700'; nameEl.style.color = 'var(--green)'; }
+    const accEl = winner.querySelector('.model-accuracy');
+    if (accEl) accEl.style.fontWeight = '700';
     if (!winner.querySelector('.trophy')) winner.insertAdjacentHTML('beforeend', '<span class="trophy" style="font-size:1rem; margin-left:10px;">🏆</span>');
   }
 
@@ -1736,6 +1820,7 @@ async function runProxySH() {
   btn.disabled = true;
   btn.textContent = '⏳ Running…';
   timerEl.textContent = '0.0s';
+  resetProgressBar('proxy-sh');
   list.querySelectorAll('li').forEach(li => {
     li.querySelector('.status-dot').dataset.status = 'idle';
     li.querySelector('.model-accuracy').textContent = '';
@@ -1746,6 +1831,8 @@ async function runProxySH() {
     if (trophy) trophy.remove();
     const nameEl = li.querySelector('span:not(.status-dot):not(.model-accuracy)');
     if (nameEl) { nameEl.style.fontWeight = ''; nameEl.style.color = ''; }
+    const accEl2 = li.querySelector('.model-accuracy');
+    if (accEl2) accEl2.style.fontWeight = '';
   });
 
   // restore original order
@@ -1757,6 +1844,9 @@ async function runProxySH() {
   const timerInterval = setInterval(() => {
     timerEl.textContent = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
   }, 100);
+
+  // animate progress bar; resolves at search_start_items, barComplete resolves at data_collection_items
+  const { complete: barComplete } = await runProgressBar('proxy-sh');
 
   // track accumulated time per model name
   const accumulated = {};
@@ -1848,7 +1938,12 @@ async function runProxySH() {
     winner.style.borderRadius = '6px';
     const nameEl = winner.querySelector('span:not(.status-dot):not(.model-accuracy)');
     if (nameEl) { nameEl.style.fontWeight = '700'; nameEl.style.color = 'var(--green)'; }
+    const accEl = winner.querySelector('.model-accuracy');
+    if (accEl) accEl.style.fontWeight = '700';
     if (!winner.querySelector('.trophy')) winner.insertAdjacentHTML('beforeend', '<span class="trophy" style="font-size:1rem; margin-left:10px;">🏆</span>');
+
+    // wait for data collection to complete before fine-tuning
+    await barComplete;
 
     // full fine-tuning of winner using baseline data
     const winnerName    = data.rounds[0].models[+winner.dataset.index]?.name;
