@@ -1,5 +1,5 @@
 {
-  "data_collection_items": 5000,
+  "data_collection_items": 500,
   "search_start_items": 500,
   "labeling_speed": 300,
   "models": [

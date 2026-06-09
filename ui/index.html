@@ -85,6 +85,8 @@
     .btn-primary:hover { background: #8ba3f8; }
     .btn-success { background: #16a34a; color: #fff; }
     .btn-success:hover { background: #15803d; }
+    .btn-warning { background: #d97706; color: #fff; }
+    .btn-warning:hover { background: #b45309; }
     .actions-divider { width: 1px; height: 22px; background: var(--border); margin: 0 2px; }
     .scenario-select {
       padding: 6px 10px;
@@ -771,7 +773,7 @@
   <header style="flex-shrink:0; background:var(--surface); border-bottom:1px solid var(--border); padding:14px 28px; display:flex; align-items:center; gap:12px;">
     <button class="btn btn-ghost" onclick="showView('main')">← Back</button>
     <div class="logo" style="font-size:1.1rem;">🔧 Model Development</div>
-    <button class="btn btn-success" style="position:absolute; left:50%; transform:translateX(-50%);" onclick="startAll()">▶▶ Start All</button>
+    <button id="start-all-btn" class="btn btn-success" style="position:absolute; left:50%; transform:translateX(-50%);" onclick="startAll()">▶▶ Start All</button>
   </header>
   <div style="flex:1; overflow-y:auto; padding:28px;">
     <div id="model-dev-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:18px; align-items:start;">
@@ -1602,7 +1604,7 @@ function buildModelDevPage() {
       <div style="padding:10px 14px 16px;">
         <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--text-muted); margin-bottom:4px;">
           <span id="${card.id}-progress-title">Collecting labeled data…</span>
-          <span id="${card.id}-progress-label">0 / 5000</span>
+          <span id="${card.id}-progress-label">0 / ${cardData[card.id]?.data_collection_items ?? 5000}</span>
         </div>
         <div style="position:relative; background:var(--surface2); border:1px solid var(--border); border-radius:6px; height:10px; overflow:hidden;">
           <div id="${card.id}-progress-bar" style="height:100%; width:0%; background:var(--accent); border-radius:6px; transition:none;"></div>
@@ -1634,6 +1636,32 @@ function buildModelDevPage() {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+
+// ── Run-token: pressing Start again cancels the previous run ─────────────
+const _runTokens        = {};
+const _abortResolvers   = {};
+const _timerIntervals   = {};
+const _progressIntervals = {};
+
+function nextToken(cardId) {
+  if (_timerIntervals[cardId])    { clearInterval(_timerIntervals[cardId]);    _timerIntervals[cardId]    = null; }
+  if (_progressIntervals[cardId]) { clearInterval(_progressIntervals[cardId]); _progressIntervals[cardId] = null; }
+  if (_abortResolvers[cardId])    { _abortResolvers[cardId](); _abortResolvers[cardId] = null; }
+  _runTokens[cardId] = (_runTokens[cardId] ?? 0) + 1;
+  return _runTokens[cardId];
+}
+function tokenActive(cardId, token) {
+  return _runTokens[cardId] === token;
+}
+// returns a promise that resolves the instant nextToken(cardId) is called
+function abortSignal(cardId) {
+  return new Promise(resolve => { _abortResolvers[cardId] = resolve; });
+}
+// like sleep(ms) but resolves early if aborted
+function sleepC(ms, abort) {
+  return Promise.race([sleep(ms), abort]);
+}
+
 function resetProgressBar(cardId) {
   const data    = cardData[cardId];
   const TOTAL   = data.data_collection_items ?? 5000;
@@ -1648,7 +1676,8 @@ function resetProgressBar(cardId) {
 }
 
 // resolves when search_start_items is reached; bar continues filling in background
-async function runProgressBar(cardId) {
+// abort is the abortSignal promise — resolves immediately when run is cancelled
+async function runProgressBar(cardId, token, abort) {
   const data   = cardData[cardId];
   const TOTAL  = data.data_collection_items ?? 5000;
   const START  = data.search_start_items ?? TOTAL;
@@ -1656,8 +1685,7 @@ async function runProgressBar(cardId) {
   const TICK   = 50;
   const bar    = document.getElementById(`${cardId}-progress-bar`);
   const label  = document.getElementById(`${cardId}-progress-label`);
-  const marker = document.getElementById(`${cardId}-progress-marker`);
-  if (!bar) return;
+  if (!bar) return { complete: Promise.resolve() };
 
   bar.style.width = '0%';
   label.textContent = `0 / ${TOTAL}`;
@@ -1666,43 +1694,56 @@ async function runProgressBar(cardId) {
   let resolveComplete;
   const complete = new Promise(r => resolveComplete = r);
 
-  await new Promise(resolveAtStart => {
-    let count = 0;
-    let startResolved = false;
-    const iv = setInterval(() => {
-      count = Math.min(count + RATE * (TICK / 1000), TOTAL);
-      bar.style.width = (count / TOTAL * 100) + '%';
-      label.textContent = `${Math.round(count)} / ${TOTAL}`;
+  let resolveAtStart;
+  const startReady = new Promise(r => resolveAtStart = r);
 
-      // unblock model processing when search_start_items reached
-      if (!startResolved && count >= START) {
-        startResolved = true;
-        resolveAtStart();
-      }
+  let count = 0;
+  let startResolved = false;
+  const iv = setInterval(() => {
+    if (_progressIntervals[cardId] !== iv) return; // superseded or killed by nextToken
+    count = Math.min(count + RATE * (TICK / 1000), TOTAL);
+    bar.style.width = (count / TOTAL * 100) + '%';
+    label.textContent = `${Math.round(count)} / ${TOTAL}`;
+    if (!startResolved && count >= START) { startResolved = true; resolveAtStart(); }
+    if (count >= TOTAL) {
+      clearInterval(iv);
+      if (_progressIntervals[cardId] === iv) _progressIntervals[cardId] = null;
+      const elapsed = ((Date.now() - progressStart) / 1000).toFixed(1);
+      document.getElementById(`${cardId}-progress-title`).textContent = 'Collecting labeled data';
+      document.getElementById(`${cardId}-progress-time`).textContent = `Done in ${elapsed}s`;
+      resolveComplete();
+    }
+  }, TICK);
+  _progressIntervals[cardId] = iv;
 
-      if (count >= TOTAL) {
-        clearInterval(iv);
-        const elapsed = ((Date.now() - progressStart) / 1000).toFixed(1);
-        document.getElementById(`${cardId}-progress-title`).textContent = 'Collecting labeled data';
-        document.getElementById(`${cardId}-progress-time`).textContent = `Done in ${elapsed}s`;
-        resolveComplete();
-      }
-    }, TICK);
-  });
+  // wait for START threshold OR cancellation — whichever comes first
+  await Promise.race([startReady, abort]);
+
+  if (!tokenActive(cardId, token)) {
+    clearInterval(iv);
+    if (_progressIntervals[cardId] === iv) _progressIntervals[cardId] = null;
+    resolveComplete();
+    return { complete: Promise.resolve() };
+  }
 
   return { complete };
 }
 
 async function runCard(cardId) {
+  const token  = nextToken(cardId);
   const models = cardData[cardId].models;
   const btn     = document.getElementById(`${cardId}-start-btn`);
   const timerEl = document.getElementById(`${cardId}-timer`);
   const list    = document.getElementById(`list-${cardId}`);
   const items   = list.querySelectorAll('li');
 
+  _onRunStart();
+  const abort = abortSignal(cardId);
+
   // reset
-  btn.disabled = true;
-  btn.textContent = '⏳ Running…';
+  btn.disabled = false;
+  btn.className = 'btn btn-warning';
+  btn.textContent = '↺ Restart';
   timerEl.textContent = '0.0s';
   resetProgressBar(cardId);
   items.forEach(li => {
@@ -1727,9 +1768,11 @@ async function runCard(cardId) {
   const timerInterval = setInterval(() => {
     timerEl.textContent = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
   }, 100);
+  _timerIntervals[cardId] = timerInterval;
 
   // animate progress bar before model processing
-  await runProgressBar(cardId);
+  await runProgressBar(cardId, token, abort);
+  if (!tokenActive(cardId, token)) { _onRunEnd(); return; }
 
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
@@ -1738,7 +1781,8 @@ async function runCard(cardId) {
     const acc = li.querySelector('.model-accuracy');
 
     dot.dataset.status = 'running';
-    await sleep(model.processing_time_ms);
+    await sleepC(model.processing_time_ms, abort);
+    if (!tokenActive(cardId, token)) { _onRunEnd(); return; }
     dot.dataset.status = 'done';
     const label = cardId === 'proxy' ? 'proxy score' : 'accuracy';
     acc.textContent = `${label}: ${model.accuracy.toFixed(2)}  ·  ${model.processing_time_ms}ms`;
@@ -1790,7 +1834,8 @@ async function runCard(cardId) {
       const acc = winnerLi.querySelector('.model-accuracy');
       dot.dataset.status = 'running';
       acc.textContent = 'full fine-tuning…';
-      await sleep(baselineModel.processing_time_ms);
+      await sleepC(baselineModel.processing_time_ms, abort);
+      if (!tokenActive(cardId, token)) { _onRunEnd(); return; }
       dot.dataset.status = 'done';
       acc.textContent = `accuracy: ${baselineModel.accuracy.toFixed(2)}  ·  ${baselineModel.processing_time_ms}ms`;
     }
@@ -1798,8 +1843,26 @@ async function runCard(cardId) {
 
   clearInterval(timerInterval);
   timerEl.textContent = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
-  btn.disabled = false;
+  btn.className = 'btn btn-success';
+  btn.style.marginLeft = 'auto';
+  btn.style.fontSize = '0.78rem';
+  btn.style.padding = '4px 10px';
   btn.textContent = '▶ Start';
+  _onRunEnd();
+}
+
+let _activeRuns = 0;
+function _onRunStart() {
+  _activeRuns++;
+  const btn = document.getElementById('start-all-btn');
+  if (btn) { btn.className = 'btn btn-warning'; btn.textContent = '↺ Restart All'; }
+}
+function _onRunEnd() {
+  _activeRuns = Math.max(0, _activeRuns - 1);
+  if (_activeRuns === 0) {
+    const btn = document.getElementById('start-all-btn');
+    if (btn) { btn.className = 'btn btn-success'; btn.textContent = '▶▶ Start All'; }
+  }
 }
 
 function startAll() {
@@ -1811,14 +1874,19 @@ function startAll() {
 
 // ── Proxy Scoring + SH ───────────────────────────────────────────────────
 async function runProxySH() {
+  const token  = nextToken('proxy-sh');
   const data    = cardData['proxy-sh'];
   const btn     = document.getElementById('proxy-sh-start-btn');
   const timerEl = document.getElementById('proxy-sh-timer');
   const list    = document.getElementById('list-proxy-sh');
 
+  _onRunStart();
+  const abort = abortSignal('proxy-sh');
+
   // reset
-  btn.disabled = true;
-  btn.textContent = '⏳ Running…';
+  btn.disabled = false;
+  btn.className = 'btn btn-warning';
+  btn.textContent = '↺ Restart';
   timerEl.textContent = '0.0s';
   resetProgressBar('proxy-sh');
   list.querySelectorAll('li').forEach(li => {
@@ -1844,9 +1912,11 @@ async function runProxySH() {
   const timerInterval = setInterval(() => {
     timerEl.textContent = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
   }, 100);
+  _timerIntervals['proxy-sh'] = timerInterval;
 
   // animate progress bar; resolves at search_start_items, barComplete resolves at data_collection_items
-  const { complete: barComplete } = await runProgressBar('proxy-sh');
+  const { complete: barComplete } = await runProgressBar('proxy-sh', token, abort);
+  if (!tokenActive('proxy-sh', token)) { _onRunEnd(); return; }
 
   // track accumulated time per model name
   const accumulated = {};
@@ -1873,7 +1943,8 @@ async function runProxySH() {
       const acc = li.querySelector('.model-accuracy');
 
       dot.dataset.status = 'running';
-      await sleep(roundMs);
+      await sleepC(roundMs, abort);
+      if (!tokenActive('proxy-sh', token)) { _onRunEnd(); return; }
       dot.dataset.status = 'done';
       acc.textContent = `proxy score: ${model.proxy_score.toFixed(2)}  ·  ${totalMs}ms`;
 
@@ -1926,7 +1997,8 @@ async function runProxySH() {
         }
       });
       // small pause so greyout is visible before next round starts
-      await sleep(400);
+      await sleepC(400, abort);
+      if (!tokenActive('proxy-sh', token)) { _onRunEnd(); return; }
     }
   }
 
@@ -1944,6 +2016,7 @@ async function runProxySH() {
 
     // wait for data collection to complete before fine-tuning
     await barComplete;
+    if (!tokenActive('proxy-sh', token)) { _onRunEnd(); return; }
 
     // full fine-tuning of winner using baseline data
     const winnerName    = data.rounds[0].models[+winner.dataset.index]?.name;
@@ -1953,7 +2026,8 @@ async function runProxySH() {
       const acc = winner.querySelector('.model-accuracy');
       dot.dataset.status = 'running';
       acc.textContent = 'full fine-tuning…';
-      await sleep(baselineModel.processing_time_ms);
+      await sleepC(baselineModel.processing_time_ms, abort);
+      if (!tokenActive('proxy-sh', token)) { _onRunEnd(); return; }
       dot.dataset.status = 'done';
       acc.textContent = `accuracy: ${baselineModel.accuracy.toFixed(2)}  ·  ${baselineModel.processing_time_ms}ms`;
     }
@@ -1961,8 +2035,12 @@ async function runProxySH() {
 
   clearInterval(timerInterval);
   timerEl.textContent = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
-  btn.disabled = false;
+  btn.className = 'btn btn-success';
+  btn.style.marginLeft = 'auto';
+  btn.style.fontSize = '0.78rem';
+  btn.style.padding = '4px 10px';
   btn.textContent = '▶ Start';
+  _onRunEnd();
 }
 
 const STATUS_CYCLE = ['idle', 'running', 'done'];
