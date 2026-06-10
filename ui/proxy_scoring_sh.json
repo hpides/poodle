@@ -1,43 +1,102 @@
 {
   "data_collection_items": 5000,
-  "search_start_items": 500,
-  "labeling_speed": 300,
-  "ms_per_data_item": 1,
+  "search_start_items": 1000,
+  "labeling_speed": 13,
+  "ms_per_data_item": 24.9,
+  "winner": {
+    "name": "model-3",
+    "accuracy": 0.926,
+    "processing_time_ms": 213988
+  },
   "rounds": [
     {
       "round": 1,
-      "data_items": 50,
+      "data_items": 250,
       "models": [
-        { "name": "model-1",  "proxy_score": 0.61 },
-        { "name": "model-2",  "proxy_score": 0.44 },
-        { "name": "model-3",  "proxy_score": 0.78 },
-        { "name": "model-4",  "proxy_score": 0.33 },
-        { "name": "model-5",  "proxy_score": 0.55 },
-        { "name": "model-6",  "proxy_score": 0.82 },
-        { "name": "model-7",  "proxy_score": 0.27 },
-        { "name": "model-8",  "proxy_score": 0.69 },
-        { "name": "model-9",  "proxy_score": 0.41 },
-        { "name": "model-10", "proxy_score": 0.73 }
+        {
+          "name": "model-3",
+          "proxy_score": 0.904
+        },
+        {
+          "name": "model-4",
+          "proxy_score": 0.876
+        },
+        {
+          "name": "model-2",
+          "proxy_score": 0.864
+        },
+        {
+          "name": "model-9",
+          "proxy_score": 0.74
+        },
+        {
+          "name": "model-1",
+          "proxy_score": 0.716
+        },
+        {
+          "name": "model-8",
+          "proxy_score": 0.68
+        },
+        {
+          "name": "model-6",
+          "proxy_score": 0.644
+        },
+        {
+          "name": "model-10",
+          "proxy_score": 0.536
+        },
+        {
+          "name": "model-7",
+          "proxy_score": 0.528
+        },
+        {
+          "name": "model-5",
+          "proxy_score": 0.488
+        }
       ]
     },
     {
       "round": 2,
-      "data_items": 200,
+      "data_items": 500,
       "models": [
-        { "name": "model-1",  "proxy_score": 0.62 },
-        { "name": "model-3",  "proxy_score": 0.75 },
-        { "name": "model-6",  "proxy_score": 0.85 },
-        { "name": "model-8",  "proxy_score": 0.83 },
-        { "name": "model-10", "proxy_score": 0.67 }
+        {
+          "name": "model-3",
+          "proxy_score": 0.92
+        },
+        {
+          "name": "model-2",
+          "proxy_score": 0.9
+        },
+        {
+          "name": "model-4",
+          "proxy_score": 0.89
+        },
+        {
+          "name": "model-9",
+          "proxy_score": 0.82
+        },
+        {
+          "name": "model-1",
+          "proxy_score": 0.628
+        }
       ]
     },
     {
       "round": 3,
-      "data_items": 800,
+      "data_items": 1000,
       "models": [
-        { "name": "model-3",  "proxy_score": 0.91 },
-        { "name": "model-6",  "proxy_score": 0.87 },
-        { "name": "model-8",  "proxy_score": 0.79 }
+        {
+          "name": "model-3",
+          "proxy_score": 0.916
+        },
+        {
+          "name": "model-2",
+          "proxy_score": 0.909
+        },
+        {
+          "name": "model-4",
+          "proxy_score": 0.898
+        }
       ]
     }
   ]
