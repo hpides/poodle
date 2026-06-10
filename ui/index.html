@@ -774,6 +774,13 @@
     <button class="btn btn-ghost" onclick="showView('main')">← Back</button>
     <div class="logo" style="font-size:1.1rem;">🔧 Model Development</div>
     <button id="start-all-btn" class="btn btn-success" style="position:absolute; left:50%; transform:translateX(-50%);" onclick="startAll()">▶▶ Start All</button>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:8px; font-size:0.8rem; color:var(--text-muted);">
+      <span>Speed</span>
+      <input id="sim-speed-slider" type="range" min="1" max="20" step="1" value="10"
+        style="width:90px; cursor:pointer; accent-color:var(--accent);"
+        oninput="SIM_SPEED = +this.value; document.getElementById('sim-speed-label').textContent = this.value + 'x';">
+      <span id="sim-speed-label" style="min-width:24px;">10x</span>
+    </div>
   </header>
   <div style="flex:1; overflow-y:auto; padding:28px;">
     <div id="model-dev-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:18px; align-items:start;">
@@ -1562,6 +1569,9 @@ const cardData = {
   'proxy':    { models: [] },
   'proxy-sh': { rounds: [], ms_per_data_item: 4 },
 };
+// Fine-tune results for the proxy-scoring winner per data size
+let proxyFtSmall = {};   // from ft_small_model-3.json  (500-item run)
+
 
 const DEV_CARDS = [
   { id: 'baseline-single', icon: '📊', title: 'Baseline',           api: '/api/baseline-single'  },
@@ -1571,12 +1581,13 @@ const DEV_CARDS = [
 ];
 
 async function loadCardData() {
-  await Promise.all(
-    DEV_CARDS.filter(c => c.api).map(async c => {
+  await Promise.all([
+    ...DEV_CARDS.filter(c => c.api).map(async c => {
       const res = await fetch(c.api);
       cardData[c.id] = await res.json();
-    })
-  );
+    }),
+    fetch('/api/proxy-ft-small').then(r => r.json()).then(d => { proxyFtSmall = d; }),
+  ]);
 }
 
 function buildModelDevPage() {
@@ -1665,9 +1676,12 @@ function tokenActive(cardId, token) {
 function abortSignal(cardId) {
   return new Promise(resolve => { _abortResolvers[cardId] = resolve; });
 }
-// like sleep(ms) but resolves early if aborted
+// Simulation speed multiplier — controlled by the Speed slider (1x–5x)
+let SIM_SPEED = 10;
+
+// like sleep(ms) but resolves early if aborted, and respects SIM_SPEED
 function sleepC(ms, abort) {
-  return Promise.race([sleep(ms), abort]);
+  return Promise.race([sleep(ms / SIM_SPEED), abort]);
 }
 
 function resetProgressBar(cardId) {
@@ -1709,7 +1723,7 @@ async function runProgressBar(cardId, token, abort) {
   let startResolved = false;
   const iv = setInterval(() => {
     if (_progressIntervals[cardId] !== iv) return; // superseded or killed by nextToken
-    count = Math.min(count + RATE * (TICK / 1000), TOTAL);
+    count = Math.min(count + RATE * SIM_SPEED * (TICK / 1000), TOTAL);
     bar.style.width = (count / TOTAL * 100) + '%';
     label.textContent = `${Math.round(count)} / ${TOTAL}`;
     if (!startResolved && count >= START) { startResolved = true; resolveAtStart(); }
@@ -1772,9 +1786,10 @@ async function runCard(cardId) {
     .sort((a, b) => +a.dataset.index - +b.dataset.index)
     .forEach(el => list.appendChild(el));
 
-  const startTime = Date.now();
+  let simElapsed = 0;
   const timerInterval = setInterval(() => {
-    timerEl.textContent = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
+    simElapsed += 0.1 * SIM_SPEED;
+    timerEl.textContent = simElapsed.toFixed(1) + 's';
   }, 100);
   _timerIntervals[cardId] = timerInterval;
 
@@ -1793,7 +1808,7 @@ async function runCard(cardId) {
     if (!tokenActive(cardId, token)) { _onRunEnd(); return; }
     dot.dataset.status = 'done';
     const label = cardId === 'proxy' ? 'proxy score' : 'accuracy';
-    acc.textContent = `${label}: ${model.accuracy.toFixed(2)}  ·  ${model.processing_time_ms}ms`;
+    acc.textContent = `${label}: ${model.accuracy.toFixed(2)}  ·  ${(model.processing_time_ms/1000).toFixed(1)}s`;
 
     // re-sort with FLIP animation
     const allLis = [...list.querySelectorAll('li')];
@@ -1836,27 +1851,31 @@ async function runCard(cardId) {
     if (!tokenActive(cardId, token)) { _onRunEnd(); return; }
   }
 
-  // for proxy: run the winning model for real using baseline data
+  // for proxy: run the winning model for real using the appropriate ft data
   if (cardId === 'proxy') {
     const winnerLi = list.querySelector('li:first-child');
     const winnerIndex = +winnerLi.dataset.index;
     const winnerName  = models[winnerIndex].name;
-    const baselineModel = cardData['baseline'].models.find(m => m.name === winnerName);
+    // 500-item run → use dedicated small ft result; 5000-item run → baseline_search.json
+    const proxyN = cardData['proxy'].data_collection_items ?? 500;
+    const ftModel = proxyN <= 500
+      ? proxyFtSmall
+      : cardData['baseline'].models.find(m => m.name === winnerName);
 
-    if (baselineModel) {
+    if (ftModel && ftModel.processing_time_ms) {
       const dot = winnerLi.querySelector('.status-dot');
       const acc = winnerLi.querySelector('.model-accuracy');
       dot.dataset.status = 'running';
       acc.textContent = 'full fine-tuning…';
-      await sleepC(baselineModel.processing_time_ms, abort);
+      await sleepC(ftModel.processing_time_ms, abort);
       if (!tokenActive(cardId, token)) { _onRunEnd(); return; }
       dot.dataset.status = 'done';
-      acc.textContent = `accuracy: ${baselineModel.accuracy.toFixed(2)}  ·  ${baselineModel.processing_time_ms}ms`;
+      acc.textContent = `accuracy: ${ftModel.accuracy.toFixed(2)}  ·  ${(ftModel.processing_time_ms/1000).toFixed(1)}s`;
     }
   }
 
   clearInterval(timerInterval);
-  timerEl.textContent = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
+  timerEl.textContent = simElapsed.toFixed(1) + 's';
   btn.className = 'btn btn-success';
   btn.style.marginLeft = 'auto';
   btn.style.fontSize = '0.78rem';
@@ -1938,9 +1957,9 @@ async function runProxySH() {
     .sort((a, b) => +a.dataset.index - +b.dataset.index)
     .forEach(el => list.appendChild(el));
 
-  const startTime = Date.now();
+  let simElapsed = 0;
   const timerInterval = setInterval(() => {
-    timerEl.textContent = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
+    simElapsed += 0.1 * SIM_SPEED; timerEl.textContent = simElapsed.toFixed(1) + 's';
   }, 100);
   _timerIntervals['proxy-sh'] = timerInterval;
 
@@ -2059,12 +2078,12 @@ async function runProxySH() {
       await sleepC(baselineModel.processing_time_ms, abort);
       if (!tokenActive('proxy-sh', token)) { _onRunEnd(); return; }
       dot.dataset.status = 'done';
-      acc.textContent = `accuracy: ${baselineModel.accuracy.toFixed(2)}  ·  ${baselineModel.processing_time_ms}ms`;
+      acc.textContent = `accuracy: ${baselineModel.accuracy.toFixed(2)}  ·  ${(baselineModel.processing_time_ms/1000).toFixed(1)}s`;
     }
   }
 
   clearInterval(timerInterval);
-  timerEl.textContent = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
+  timerEl.textContent = simElapsed.toFixed(1) + 's';
   btn.className = 'btn btn-success';
   btn.style.marginLeft = 'auto';
   btn.style.fontSize = '0.78rem';
