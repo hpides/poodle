@@ -206,6 +206,14 @@ def run_variant(variant, device):
         json.dump(output, f, indent=2)
     print(f"\n  ✓ Written {variant['ui_json']}")
 
+    # Write the winner's ft result to ui/ft_<variant>_<winner>.json
+    # so the UI can load it directly for the fine-tuning animation.
+    ui_dir = os.path.join(SCRIPT_DIR, "..", "ui")
+    ft_ui_path = os.path.join(ui_dir, f"ft_{name}_{winner['name']}.json")
+    with open(ft_ui_path, "w") as f:
+        json.dump(ft_result, f, indent=2)
+    print(f"  ✓ Written {ft_ui_path}")
+
     print(f"\n  {'Model':<10}  {'Proxy score':>12}  {'Time (ms)':>12}")
     print(f"  {'-'*10}  {'-'*12}  {'-'*12}")
     for m in sorted(proxy_results, key=lambda x: x["proxy_score"], reverse=True):

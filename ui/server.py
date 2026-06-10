@@ -206,6 +206,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             ps_path = ROOT / "proxy_scoring_500.json"
             data = json.loads(ps_path.read_text()) if ps_path.exists() else {"models": []}
             self._send(200, "application/json", json.dumps(data).encode())
+        elif self.path == "/api/proxy-ft-small":
+            ft_path = ROOT / "ft_small_model-3.json"
+            data = json.loads(ft_path.read_text()) if ft_path.exists() else {}
+            self._send(200, "application/json", json.dumps(data).encode())
         elif self.path == "/api/proxy-scoring-sh":
             ps_path = ROOT / "proxy_scoring_sh.json"
             data = json.loads(ps_path.read_text()) if ps_path.exists() else {"rounds": []}
