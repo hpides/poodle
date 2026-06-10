@@ -31,6 +31,10 @@ from transformers import (
 )
 from torch.optim import AdamW
 
+# Make project root importable so we can reuse existing data utilities
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+from data.imdb.reduced_imdb import load_imdb_data
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
@@ -39,7 +43,7 @@ RESULTS_DIR  = os.path.join(SCRIPT_DIR, "results")
 UI_JSON_PATH = os.path.join(SCRIPT_DIR, "..", "ui", "baseline_search.json")
 
 # Raw IMDB data lives on the shared mount used by the rest of the project
-DATA_ROOT = "/mount-fs/poodle/labeled-data/imdb/"
+DATA_ROOT = "/mount-fs/poodle/labeled-data/imdb/aclImdb"
 
 # ---------------------------------------------------------------------------
 # Model registry  (model-N  →  HuggingFace ID)
@@ -70,25 +74,31 @@ VAL_FRACTION     = 0.2  # 20 % of train used for validation
 
 
 # ---------------------------------------------------------------------------
-# Data loading  (reuse existing split layout)
+# Data loading  (mirrors load_imdb_different_splits in bert_accuracy/bert_training.py)
 # ---------------------------------------------------------------------------
 def load_texts_and_labels(root, num_splits, split):
     """
-    Load `num_splits` numbered sub-directories from root/<split>-500-{0..N-1}/
-    Each directory contains pos/ and neg/ sub-folders with .txt review files.
+    Load `num_splits` numbered sub-directories from
+    root/<split>-500-splits/<split>-500-{0..N-1}/
+    matching the layout used by the rest of the project.
     """
     texts, labels = [], []
     for i in range(num_splits):
         folder = os.path.join(root, f"{split}-500-{i}")
-        for label_val, sentiment in [(1, "pos"), (0, "neg")]:
-            sentiment_dir = os.path.join(folder, sentiment)
-            if not os.path.isdir(sentiment_dir):
-                raise FileNotFoundError(f"Missing directory: {sentiment_dir}")
-            for fname in sorted(os.listdir(sentiment_dir)):
-                if fname.endswith(".txt"):
-                    with open(os.path.join(sentiment_dir, fname), encoding="utf-8") as f:
-                        texts.append(f.read())
-                    labels.append(label_val)
+        if not os.path.isdir(folder):
+            raise FileNotFoundError(
+                f"Expected split directory not found: {folder}\n"
+                f"DATA_ROOT is set to: {root}\n"
+                f"Make sure DATA_ROOT points to the correct location."
+            )
+        t, l = load_imdb_data(folder)
+        if not t:
+            raise RuntimeError(
+                f"No examples loaded from {folder} — "
+                f"check that pos/ and neg/ subdirectories contain .txt files."
+            )
+        texts.extend(t)
+        labels.extend(l)
     return texts, labels
 
 

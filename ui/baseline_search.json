@@ -5,53 +5,53 @@
   "models": [
     {
       "name": "model-1",
-      "accuracy": 0.73,
-      "processing_time_ms": 1043
+      "accuracy": 0.91,
+      "processing_time_ms": 210497
     },
     {
       "name": "model-2",
-      "accuracy": 0.41,
-      "processing_time_ms": 1037
+      "accuracy": 0.904,
+      "processing_time_ms": 107845
     },
     {
       "name": "model-3",
-      "accuracy": 0.88,
-      "processing_time_ms": 1008
+      "accuracy": 0.926,
+      "processing_time_ms": 213988
     },
     {
       "name": "model-4",
-      "accuracy": 0.15,
-      "processing_time_ms": 1037
+      "accuracy": 0.912,
+      "processing_time_ms": 212245
     },
     {
       "name": "model-5",
-      "accuracy": 0.62,
-      "processing_time_ms": 993
+      "accuracy": 0.699,
+      "processing_time_ms": 213415
     },
     {
       "name": "model-6",
-      "accuracy": 0.97,
-      "processing_time_ms": 981
+      "accuracy": 0.901,
+      "processing_time_ms": 213602
     },
     {
       "name": "model-7",
-      "accuracy": 0.34,
-      "processing_time_ms": 1029
+      "accuracy": 0.865,
+      "processing_time_ms": 676773
     },
     {
       "name": "model-8",
-      "accuracy": 0.55,
-      "processing_time_ms": 986
+      "accuracy": 0.907,
+      "processing_time_ms": 224803
     },
     {
       "name": "model-9",
-      "accuracy": 0.82,
-      "processing_time_ms": 1021
+      "accuracy": 0.88,
+      "processing_time_ms": 213845
     },
     {
       "name": "model-10",
-      "accuracy": 0.09,
-      "processing_time_ms": 987
+      "accuracy": 0.891,
+      "processing_time_ms": 213846
     }
   ]
 }
