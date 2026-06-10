@@ -776,14 +776,18 @@
     <button id="start-all-btn" class="btn btn-success" style="position:absolute; left:50%; transform:translateX(-50%);" onclick="startAll()">▶▶ Start All</button>
     <div style="margin-left:auto; display:flex; align-items:center; gap:8px; font-size:0.8rem; color:var(--text-muted);">
       <span>Speed</span>
-      <input id="sim-speed-slider" type="range" min="1" max="20" step="1" value="10"
-        style="width:90px; cursor:pointer; accent-color:var(--accent);"
-        oninput="SIM_SPEED = +this.value; document.getElementById('sim-speed-label').textContent = this.value + 'x';">
-      <span id="sim-speed-label" style="min-width:24px;">10x</span>
+      <select onchange="SIM_SPEED = +this.value;"
+        style="padding:3px 6px; font-size:0.8rem; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); cursor:pointer;">
+        <option value="1">1x</option>
+        <option value="10" selected>10x</option>
+        <option value="20">20x</option>
+        <option value="50">50x</option>
+        <option value="100">100x</option>
+      </select>
     </div>
   </header>
   <div style="flex:1; overflow-y:auto; padding:28px;">
-    <div id="model-dev-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:18px; align-items:start;">
+    <div id="model-dev-grid" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; align-items:start;">
       <!-- cards injected by JS -->
     </div>
   </div>
@@ -1565,19 +1569,21 @@ function showToast(msg) {
 // ── Model Dev detail page ─────────────────────────────────────────────────
 const cardData = {
   'baseline-single': { models: [] },
-  'baseline': { models: [] },
-  'proxy':    { models: [] },
-  'proxy-sh': { rounds: [], ms_per_data_item: 4 },
+  'baseline':        { models: [] },
+  'proxy':           { models: [], data_collection_items: 500,  search_start_items: 500  },
+  'proxy-5000':      { models: [], data_collection_items: 5000, search_start_items: 500  },
+  'proxy-sh':        { rounds: [], ms_per_data_item: 4 },
 };
 // Fine-tune results for the proxy-scoring winner per data size
 let proxyFtSmall = {};   // from ft_small_model-3.json  (500-item run)
 
 
 const DEV_CARDS = [
-  { id: 'baseline-single', icon: '📊', title: 'Baseline',           api: '/api/baseline-single'  },
-  { id: 'baseline',        icon: '📊', title: 'Baseline Search',    api: '/api/baseline'         },
-  { id: 'proxy',           icon: '🎯', title: 'Proxy Scoring',      api: '/api/proxy-scoring'    },
-  { id: 'proxy-sh',        icon: '🎯', title: 'Proxy Scoring + SH', api: '/api/proxy-scoring-sh' },
+  { id: 'baseline-single', icon: '📊', title: 'Baseline',              api: '/api/baseline-single'  },
+  { id: 'baseline',        icon: '📊', title: 'Baseline Search',       api: '/api/baseline'         },
+  { id: 'proxy',           icon: '🎯', title: 'Proxy Scoring',         api: '/api/proxy-scoring'    },
+  { id: 'proxy-5000',      icon: '🎯', title: 'Proxy Scoring',         api: '/api/proxy-scoring'    },
+  { id: 'proxy-sh',        icon: '🎯', title: 'Proxy Scoring + SH',    api: '/api/proxy-scoring-sh' },
 ];
 
 async function loadCardData() {
@@ -1588,69 +1594,95 @@ async function loadCardData() {
     }),
     fetch('/api/proxy-ft-small').then(r => r.json()).then(d => { proxyFtSmall = d; }),
   ]);
+  // proxy-5000 loads the same JSON as proxy but should default to 5000 items
+  cardData['proxy-5000'].data_collection_items = 5000;
+  cardData['proxy-5000'].search_start_items    = 500;
+}
+
+function buildCardHTML(card) {
+  const models = card.id === 'proxy-sh'
+    ? cardData['proxy-sh'].rounds[0]?.models ?? []
+    : cardData[card.id]?.models ?? [];
+
+  const items = models.map((m, i) => `
+    <li data-index="${i}" style="display:flex; align-items:center; padding:5px 0; border-bottom:1px solid var(--border); list-style:none;">
+      <span class="status-dot" data-status="idle"></span>
+      <span style="font-size:1rem;">${m.name}</span>
+      <span class="model-accuracy" style="margin-left:auto; font-size:1rem; color:var(--text-muted);"></span>
+    </li>`).join('');
+
+  const onclick = card.id === 'proxy-sh' ? `runProxySH()` : `runCard('${card.id}')`;
+
+  const isProxyCard = card.id === 'proxy' || card.id === 'proxy-5000';
+  const itemsDropdown = isProxyCard ? `
+    <select style="margin-left:8px; padding:3px 6px; font-size:0.78rem; width:86px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); cursor:pointer;"
+      onchange="setProxyItems(+this.value, '${card.id}')">
+      ${[500,5000].map(v =>
+        `<option value="${v}" ${v === (cardData[card.id]?.data_collection_items ?? 500) ? 'selected' : ''}>${v} items</option>`
+      ).join('')}
+    </select>` : '';
+
+  const startBtn = card.api
+    ? `<button id="${card.id}-start-btn" class="btn btn-success" style="margin-left:auto; font-size:0.78rem; padding:4px 10px;" onclick="${onclick}">▶ Start</button>
+       <span id="${card.id}-timer" style="font-size:1.1rem; color:var(--text-muted); margin-left:8px; font-variant-numeric:tabular-nums;">0.0s</span>`
+    : '';
+
+  const progressBar = card.api ? `
+    <div style="padding:10px 14px 16px;">
+      <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--text-muted); margin-bottom:4px;">
+        <span id="${card.id}-progress-title">Collecting labeled data…</span>
+        <span id="${card.id}-progress-label">0 / ${cardData[card.id]?.data_collection_items ?? 5000}</span>
+      </div>
+      <div style="position:relative; background:var(--surface2); border:1px solid var(--border); border-radius:6px; height:10px; overflow:hidden;">
+        <div id="${card.id}-progress-bar" style="height:100%; width:0%; background:var(--accent); border-radius:6px; transition:none;"></div>
+        ${(() => {
+          const total = cardData[card.id]?.data_collection_items ?? 5000;
+          const start = cardData[card.id]?.search_start_items ?? total;
+          return `<div id="${card.id}-progress-marker" style="position:absolute; top:0; left:${(start/total*100)}%; height:100%; width:2px; background:var(--text); opacity:0.6; display:${start < total ? 'block' : 'none'};"></div>`;
+        })()}
+      </div>
+      <div id="${card.id}-progress-time" style="font-size:0.78rem; color:var(--text-muted); margin-top:4px; min-height:1em;"></div>
+    </div>` : '';
+
+  return `
+    <div class="section" style="margin:0;" id="card-${card.id}">
+      <div class="section-header">
+        <div class="icon">${card.icon}</div>
+        <h2>${card.title}</h2>
+        ${itemsDropdown}
+        ${startBtn}
+      </div>
+      ${progressBar}
+      <div class="section-body" style="padding:4px 14px 10px;">
+        <ul id="list-${card.id}" style="padding:0; margin:0;">${items}</ul>
+      </div>
+    </div>`;
 }
 
 function buildModelDevPage() {
   const grid = document.getElementById('model-dev-grid');
   grid.innerHTML = '';
-  DEV_CARDS.forEach(card => {
-    const models = card.id === 'proxy-sh'
-      ? cardData['proxy-sh'].rounds[0]?.models ?? []
-      : cardData[card.id]?.models ?? [];
 
-    const items = models.map((m, i) => `
-      <li data-index="${i}" style="display:flex; align-items:center; padding:5px 0; border-bottom:1px solid var(--border); list-style:none;">
-        <span class="status-dot" data-status="idle"></span>
-        <span style="font-size:1rem;">${m.name}</span>
-        <span class="model-accuracy" style="margin-left:auto; font-size:1rem; color:var(--text-muted);"></span>
-      </li>`).join('');
+  // Column 1: Baseline (top) + Baseline Search (bottom) stacked
+  const col1 = document.createElement('div');
+  col1.style.cssText = 'display:flex; flex-direction:column; gap:18px;';
+  col1.innerHTML =
+    buildCardHTML(DEV_CARDS.find(c => c.id === 'baseline-single')) +
+    buildCardHTML(DEV_CARDS.find(c => c.id === 'baseline'));
+  grid.appendChild(col1);
 
-    const onclick = card.id === 'proxy-sh' ? `runProxySH()` : `runCard('${card.id}')`;
+  // Column 2: Proxy Scoring (500, top) + Proxy Scoring (5000, bottom)
+  const col2 = document.createElement('div');
+  col2.style.cssText = 'display:flex; flex-direction:column; gap:18px;';
+  col2.innerHTML =
+    buildCardHTML(DEV_CARDS.find(c => c.id === 'proxy')) +
+    buildCardHTML(DEV_CARDS.find(c => c.id === 'proxy-5000'));
+  grid.appendChild(col2);
 
-    const itemsDropdown = card.id === 'proxy' ? `
-      <select style="margin-left:8px; padding:3px 6px; font-size:0.78rem; width:86px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); cursor:pointer;"
-        onchange="setProxyItems(+this.value)">
-        ${[500,5000].map(v =>
-          `<option value="${v}" ${v === (cardData['proxy']?.data_collection_items ?? 500) ? 'selected' : ''}>${v} items</option>`
-        ).join('')}
-      </select>` : '';
-
-    const startBtn = card.api
-      ? `<button id="${card.id}-start-btn" class="btn btn-success" style="margin-left:auto; font-size:0.78rem; padding:4px 10px;" onclick="${onclick}">▶ Start</button>
-         <span id="${card.id}-timer" style="font-size:1.1rem; color:var(--text-muted); margin-left:8px; font-variant-numeric:tabular-nums;">0.0s</span>`
-      : '';
-
-    const progressBar = card.api ? `
-      <div style="padding:10px 14px 16px;">
-        <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--text-muted); margin-bottom:4px;">
-          <span id="${card.id}-progress-title">Collecting labeled data…</span>
-          <span id="${card.id}-progress-label">0 / ${cardData[card.id]?.data_collection_items ?? 5000}</span>
-        </div>
-        <div style="position:relative; background:var(--surface2); border:1px solid var(--border); border-radius:6px; height:10px; overflow:hidden;">
-          <div id="${card.id}-progress-bar" style="height:100%; width:0%; background:var(--accent); border-radius:6px; transition:none;"></div>
-          ${(() => {
-            const total = cardData[card.id]?.data_collection_items ?? 5000;
-            const start = cardData[card.id]?.search_start_items ?? total;
-            return `<div id="${card.id}-progress-marker" style="position:absolute; top:0; left:${(start/total*100)}%; height:100%; width:2px; background:var(--text); opacity:0.6; display:${start < total ? 'block' : 'none'};"></div>`;
-          })()}
-        </div>
-        <div id="${card.id}-progress-time" style="font-size:0.78rem; color:var(--text-muted); margin-top:4px; min-height:1em;"></div>
-      </div>` : '';
-
-    grid.insertAdjacentHTML('beforeend', `
-      <div class="section" style="margin:0;" id="card-${card.id}">
-        <div class="section-header">
-          <div class="icon">${card.icon}</div>
-          <h2>${card.title}</h2>
-          ${itemsDropdown}
-          ${startBtn}
-        </div>
-        ${progressBar}
-        <div class="section-body" style="padding:4px 14px 10px;">
-          <ul id="list-${card.id}" style="padding:0; margin:0;">${items}</ul>
-        </div>
-      </div>`);
-  });
+  // Column 3: Proxy Scoring + SH
+  const col3 = document.createElement('div');
+  col3.innerHTML = buildCardHTML(DEV_CARDS.find(c => c.id === 'proxy-sh'));
+  grid.appendChild(col3);
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -1845,20 +1877,20 @@ async function runCard(cardId) {
     if (!winner.querySelector('.trophy')) winner.insertAdjacentHTML('beforeend', '<span class="trophy" style="font-size:1rem; margin-left:10px;">🏆</span>');
   }
 
-  // for proxy: wait for full data collection before fine-tuning
-  if (cardId === 'proxy') {
+  // for proxy cards: wait for full data collection before fine-tuning
+  if (cardId === 'proxy' || cardId === 'proxy-5000') {
     await Promise.race([barComplete, abort]);
     if (!tokenActive(cardId, token)) { _onRunEnd(); return; }
   }
 
-  // for proxy: run the winning model for real using the appropriate ft data
-  if (cardId === 'proxy') {
+  // for proxy cards: run the winning model for real using the appropriate ft data
+  if (cardId === 'proxy' || cardId === 'proxy-5000') {
     const winnerLi = list.querySelector('li:first-child');
     const winnerIndex = +winnerLi.dataset.index;
     const winnerName  = models[winnerIndex].name;
-    // 500-item run → use dedicated small ft result; 5000-item run → baseline_search.json
-    const proxyN = cardData['proxy'].data_collection_items ?? 500;
-    const ftModel = proxyN <= 500
+    // proxy (500) → dedicated small ft result; proxy-5000 or proxy(5000) → baseline_search.json
+    const proxyN = cardData[cardId].data_collection_items ?? 500;
+    const ftModel = (cardId === 'proxy' && proxyN <= 500)
       ? proxyFtSmall
       : cardData['baseline'].models.find(m => m.name === winnerName);
 
@@ -1898,12 +1930,11 @@ function _onRunEnd() {
   }
 }
 
-function setProxyItems(n) {
-  cardData['proxy'].data_collection_items = n;
-  cardData['proxy'].search_start_items    = 500; // always start search at 500
-  resetProgressBar('proxy');
-  // update marker visibility
-  const marker = document.getElementById('proxy-progress-marker');
+function setProxyItems(n, cardId) {
+  cardData[cardId].data_collection_items = n;
+  cardData[cardId].search_start_items    = 500; // always start search at 500
+  resetProgressBar(cardId);
+  const marker = document.getElementById(`${cardId}-progress-marker`);
   if (marker) {
     if (n > 500) {
       marker.style.display = 'block';
@@ -1918,6 +1949,7 @@ function startAll() {
   runCard('baseline-single');
   runCard('baseline');
   runCard('proxy');
+  runCard('proxy-5000');
   runProxySH();
 }
 
