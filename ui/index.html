@@ -786,8 +786,8 @@
       </select>
     </div>
   </header>
-  <div style="flex:1; overflow-y:auto; padding:28px;">
-    <div id="model-dev-grid" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; align-items:start;">
+  <div style="flex:1; overflow-y:auto; padding:28px; padding-bottom:60px;">
+    <div id="model-dev-grid" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; align-items:start; grid-auto-rows:auto;">
       <!-- cards injected by JS -->
     </div>
   </div>
@@ -1570,8 +1570,8 @@ function showToast(msg) {
 const cardData = {
   'baseline-single': { models: [] },
   'baseline':        { models: [] },
-  'proxy':           { models: [], data_collection_items: 500,  search_start_items: 500  },
-  'proxy-5000':      { models: [], data_collection_items: 5000, search_start_items: 500  },
+  'proxy':           { models: [], data_collection_items: 1000, search_start_items: 1000 },
+  'proxy-5000':      { models: [], data_collection_items: 5000, search_start_items: 1000 },
   'proxy-sh':        { rounds: [], ms_per_data_item: 4 },
 };
 // Fine-tune results for the proxy-scoring winner per data size
@@ -1596,7 +1596,7 @@ async function loadCardData() {
   ]);
   // proxy-5000 loads the same JSON as proxy but should default to 5000 items
   cardData['proxy-5000'].data_collection_items = 5000;
-  cardData['proxy-5000'].search_start_items    = 500;
+  cardData['proxy-5000'].search_start_items    = 1000;
 }
 
 function buildCardHTML(card) {
@@ -1617,8 +1617,8 @@ function buildCardHTML(card) {
   const itemsDropdown = isProxyCard ? `
     <select style="margin-left:8px; padding:3px 6px; font-size:0.78rem; width:86px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); cursor:pointer;"
       onchange="setProxyItems(+this.value, '${card.id}')">
-      ${[500,5000].map(v =>
-        `<option value="${v}" ${v === (cardData[card.id]?.data_collection_items ?? 500) ? 'selected' : ''}>${v} items</option>`
+      ${[1000,5000].map(v =>
+        `<option value="${v}" ${v === (cardData[card.id]?.data_collection_items ?? 1000) ? 'selected' : ''}>${v} items</option>`
       ).join('')}
     </select>` : '';
 
@@ -1890,7 +1890,7 @@ async function runCard(cardId) {
     const winnerName  = models[winnerIndex].name;
     // proxy (500) → dedicated small ft result; proxy-5000 or proxy(5000) → baseline_search.json
     const proxyN = cardData[cardId].data_collection_items ?? 500;
-    const ftModel = (cardId === 'proxy' && proxyN <= 500)
+    const ftModel = (cardId === 'proxy' && proxyN <= 1000)
       ? proxyFtSmall
       : cardData['baseline'].models.find(m => m.name === winnerName);
 
@@ -1931,14 +1931,14 @@ function _onRunEnd() {
 }
 
 function setProxyItems(n, cardId) {
+  const searchStart = cardData[cardId].search_start_items ?? n;
   cardData[cardId].data_collection_items = n;
-  cardData[cardId].search_start_items    = 500; // always start search at 500
   resetProgressBar(cardId);
   const marker = document.getElementById(`${cardId}-progress-marker`);
   if (marker) {
-    if (n > 500) {
+    if (n > searchStart) {
       marker.style.display = 'block';
-      marker.style.left = `${(500 / n) * 100}%`;
+      marker.style.left = `${(searchStart / n) * 100}%`;
     } else {
       marker.style.display = 'none';
     }

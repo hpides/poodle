@@ -1,6 +1,6 @@
 {
-  "data_collection_items": 500,
-  "search_start_items": 500,
+  "data_collection_items": 1000,
+  "search_start_items": 1000,
   "labeling_speed": 13,
   "models": [
     {
