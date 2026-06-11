@@ -194,6 +194,30 @@ class Handler(http.server.BaseHTTPRequestHandler):
         elif self.path == "/api/measured-results":
             rows = _load_measured_results()
             self._send(200, "application/json", json.dumps(rows).encode())
+        elif self.path == "/api/baseline-single":
+            bl_path = ROOT / "baseline.json"
+            data = json.loads(bl_path.read_text()) if bl_path.exists() else {"models": []}
+            self._send(200, "application/json", json.dumps(data).encode())
+        elif self.path == "/api/baseline":
+            bl_path = ROOT / "baseline_search.json"
+            data = json.loads(bl_path.read_text()) if bl_path.exists() else {"models": []}
+            self._send(200, "application/json", json.dumps(data).encode())
+        elif self.path == "/api/proxy-scoring":
+            ps_path = ROOT / "proxy_scoring_500.json"
+            data = json.loads(ps_path.read_text()) if ps_path.exists() else {"models": []}
+            self._send(200, "application/json", json.dumps(data).encode())
+        elif self.path == "/api/proxy-ft-small":
+            ft_path = ROOT / "ft_small_model-3.json"
+            data = json.loads(ft_path.read_text()) if ft_path.exists() else {}
+            self._send(200, "application/json", json.dumps(data).encode())
+        elif self.path == "/api/proxy-scoring-sh":
+            ps_path = ROOT / "proxy_scoring_sh.json"
+            data = json.loads(ps_path.read_text()) if ps_path.exists() else {"rounds": []}
+            self._send(200, "application/json", json.dumps(data).encode())
+        elif self.path == "/api/model-mapping":
+            mm_path = ROOT / "models.json"
+            data = json.loads(mm_path.read_text()) if mm_path.exists() else {}
+            self._send(200, "application/json", json.dumps(data).encode())
         else:
             self._send(404, "text/plain", b"Not found")
 

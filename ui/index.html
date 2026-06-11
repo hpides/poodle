@@ -8,6 +8,34 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* ── Status dot ──────────────────────────────────────────────────────── */
+    .status-dot {
+      display: inline-block;
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      margin-right: 10px;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .status-dot[data-status="idle"] {
+      background: transparent;
+      border: 2px solid var(--text-muted);
+    }
+    .status-dot[data-status="running"] {
+      background: transparent;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      animation: spin 0.75s linear infinite;
+    }
+    .status-dot[data-status="done"] {
+      background: var(--green);
+      border: 2px solid var(--green);
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
     :root {
       --bg: #0f1117;
       --surface: #1a1d27;
@@ -57,6 +85,8 @@
     .btn-primary:hover { background: #8ba3f8; }
     .btn-success { background: #16a34a; color: #fff; }
     .btn-success:hover { background: #15803d; }
+    .btn-warning { background: #d97706; color: #fff; }
+    .btn-warning:hover { background: #b45309; }
     .actions-divider { width: 1px; height: 22px; background: var(--border); margin: 0 2px; }
     .scenario-select {
       padding: 6px 10px;
@@ -158,6 +188,13 @@
     }
 
     /* ── Main layout ─────────────────────────────────────────────────── */
+    #view-main {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
     .layout {
       flex: 1;
       min-height: 0;
@@ -407,6 +444,8 @@
   <div class="actions"></div>
 </header>
 
+<div id="view-main">
+
 <!-- ── Chart ─────────────────────────────────────────────────────────────── -->
 <div class="chart-section">
 
@@ -629,7 +668,6 @@
 
         <!-- Dev -->
         <div class="section" style="position:relative;">
-          <span class="info-icon" style="position:absolute; top:10px; right:10px;">i<span class="info-tooltip">One-time cost to develop / fine-tune the small model</span></span>
           <div class="section-header">
             <div class="icon">🔧</div>
             <h2>Model Development</h2>
@@ -639,6 +677,7 @@
               <option value="s-500">s-500</option>
               <option value="s-5000">s-5000</option>
             </select>
+            <button class="btn btn-ghost" style="margin-left:auto; font-size:0.78rem; padding:4px 10px;" onclick="showView('model-dev')">Details →</button>
           </div>
           <div class="section-body">
             <div class="field">
@@ -732,6 +771,40 @@
 
   </div>
 
+</div>
+
+</div><!-- end view-main -->
+
+<!-- ── Model Development Detail Page ─────────────────────────────────────── -->
+<div id="view-model-dev" style="display:none; flex-direction:column; height:100vh; background:var(--bg);">
+  <header style="flex-shrink:0; background:var(--surface); border-bottom:1px solid var(--border); padding:14px 28px; display:flex; align-items:center; gap:12px;">
+    <button class="btn btn-ghost" onclick="showView('main')">← Back</button>
+    <div class="logo" style="font-size:1.1rem;">🔧 Model Development</div>
+    <button id="start-all-btn" class="btn btn-success" style="position:absolute; left:50%; transform:translateX(-50%);" onclick="startAll()">▶▶ Start All</button>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:12px; font-size:0.8rem; color:var(--text-muted);">
+<span>Model naming</span>
+      <select id="model-naming-select" onchange="setModelNaming(this.value);"
+        style="padding:3px 6px; font-size:0.8rem; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); cursor:pointer;">
+        <option value="model-x" selected>model-x</option>
+        <option value="short">short</option>
+        <option value="full">full</option>
+      </select>
+      <span>Speed</span>
+      <select onchange="SIM_SPEED = +this.value;"
+        style="padding:3px 6px; font-size:0.8rem; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); cursor:pointer;">
+        <option value="1">1x</option>
+        <option value="10" selected>10x</option>
+        <option value="20">20x</option>
+        <option value="50">50x</option>
+        <option value="100">100x</option>
+      </select>
+    </div>
+  </header>
+  <div style="flex:1; overflow-y:auto; padding:28px; padding-bottom:60px;">
+    <div id="model-dev-grid" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; align-items:start; grid-auto-rows:auto;">
+      <!-- cards injected by JS -->
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1507,7 +1580,644 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2200);
 }
 
+// ── Model Dev detail page ─────────────────────────────────────────────────
+const cardData = {
+  'baseline-single': { models: [] },
+  'baseline':        { models: [] },
+  'proxy':           { models: [], data_collection_items: 1000, search_start_items: 1000 },
+  'proxy-5000':      { models: [], data_collection_items: 5000, search_start_items: 1000 },
+  'proxy-sh':        { rounds: [], ms_per_data_item: 4 },
+};
+// Fine-tune results for the proxy-scoring winner per data size
+let proxyFtSmall = {};   // from ft_small_model-3.json  (500-item run)
+
+
+const DEV_CARDS = [
+  { id: 'baseline-single', icon: '📊', title: 'Baseline',              api: '/api/baseline-single'  },
+  { id: 'baseline',        icon: '📊', title: 'Baseline Search',       api: '/api/baseline'         },
+  { id: 'proxy',           icon: '🎯', title: 'Proxy Scoring',         api: '/api/proxy-scoring'    },
+  { id: 'proxy-5000',      icon: '🎯', title: 'Proxy Scoring',         api: '/api/proxy-scoring'    },
+  { id: 'proxy-sh',        icon: '🎯', title: 'Proxy Scoring + SH',    api: '/api/proxy-scoring-sh' },
+];
+
+let modelMapping = {};
+let modelNaming = 'model-x';
+
+function modelDisplayName(id) {
+  if (modelNaming === 'model-x') return id;
+  const full = modelMapping[id] ?? id;
+  if (modelNaming === 'full') return full;
+  // short: everything after the last "/"
+  return full.includes('/') ? full.split('/').pop() : full;
+}
+
+function setModelNaming(mode) {
+  modelNaming = mode;
+  document.querySelectorAll('li[data-model-id] .model-label').forEach(el => {
+    el.textContent = modelDisplayName(el.closest('li').dataset.modelId);
+  });
+}
+
+async function loadCardData() {
+  await Promise.all([
+    ...DEV_CARDS.filter(c => c.api).map(async c => {
+      const res = await fetch(c.api);
+      cardData[c.id] = await res.json();
+    }),
+    fetch('/api/proxy-ft-small').then(r => r.json()).then(d => { proxyFtSmall = d; }),
+    fetch('/api/model-mapping').then(r => r.json()).then(d => { modelMapping = d; }),
+  ]);
+  // proxy-5000 loads the same JSON as proxy but should default to 5000 items
+  cardData['proxy-5000'].data_collection_items = 5000;
+  cardData['proxy-5000'].search_start_items    = 1000;
+}
+
+function buildCardHTML(card) {
+  const models = card.id === 'proxy-sh'
+    ? [...(cardData['proxy-sh'].rounds[0]?.models ?? [])]
+        .sort((a, b) => parseInt(a.name.replace('model-','')) - parseInt(b.name.replace('model-','')))
+    : cardData[card.id]?.models ?? [];
+
+  const items = models.map((m, i) => `
+    <li data-index="${i}" data-model-id="${m.name}" style="display:flex; align-items:center; padding:5px 0; border-bottom:1px solid var(--border); list-style:none;">
+      <span class="status-dot" data-status="idle"></span>
+      <span class="model-label" style="font-size:1rem;">${modelDisplayName(m.name)}</span>
+      <span class="model-accuracy" style="margin-left:auto; font-size:1rem; color:var(--text-muted);"></span>
+    </li>`).join('');
+
+  const onclick = card.id === 'proxy-sh' ? `runProxySH()` : `runCard('${card.id}')`;
+
+  const isProxyCard = card.id === 'proxy' || card.id === 'proxy-5000';
+  const itemsDropdown = isProxyCard ? `
+    <select style="margin-left:8px; padding:3px 6px; font-size:0.78rem; width:86px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); cursor:pointer;"
+      onchange="setProxyItems(+this.value, '${card.id}')">
+      ${[1000,5000].map(v =>
+        `<option value="${v}" ${v === (cardData[card.id]?.data_collection_items ?? 1000) ? 'selected' : ''}>${v} items</option>`
+      ).join('')}
+    </select>` : '';
+
+  const startBtn = card.api
+    ? `<button id="${card.id}-start-btn" class="btn btn-success" style="margin-left:auto; font-size:0.78rem; padding:4px 10px;" onclick="${onclick}">▶ Start</button>
+       <span id="${card.id}-timer" style="font-size:1.1rem; color:var(--text-muted); margin-left:8px; font-variant-numeric:tabular-nums;">0.0s</span>`
+    : '';
+
+  const progressBar = card.api ? `
+    <div style="padding:10px 14px 16px;">
+      <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--text-muted); margin-bottom:4px;">
+        <span id="${card.id}-progress-title">Collecting labeled data…</span>
+        <span id="${card.id}-progress-label">0 / ${cardData[card.id]?.data_collection_items ?? 5000}</span>
+      </div>
+      <div style="position:relative; background:var(--surface2); border:1px solid var(--border); border-radius:6px; height:10px; overflow:hidden;">
+        <div id="${card.id}-progress-bar" style="height:100%; width:0%; background:var(--accent); border-radius:6px; transition:none;"></div>
+        ${card.id === 'proxy-sh' ? (() => {
+          const total = cardData[card.id]?.data_collection_items ?? 5000;
+          return [500, 1000, 2000].map(m =>
+            `<div style="position:absolute; top:0; left:${(m/total*100)}%; height:100%; width:2px; background:var(--text); opacity:0.6;"></div>`
+          ).join('');
+        })() : (() => {
+          const total = cardData[card.id]?.data_collection_items ?? 5000;
+          const start = cardData[card.id]?.search_start_items ?? total;
+          return `<div id="${card.id}-progress-marker" style="position:absolute; top:0; left:${(start/total*100)}%; height:100%; width:2px; background:var(--text); opacity:0.6; display:${start < total ? 'block' : 'none'};"></div>`;
+        })()}
+      </div>
+      <div id="${card.id}-progress-time" style="font-size:0.78rem; color:var(--text-muted); margin-top:4px; min-height:1em;"></div>
+    </div>` : '';
+
+  return `
+    <div class="section" style="margin:0;" id="card-${card.id}">
+      <div class="section-header">
+        <div class="icon">${card.icon}</div>
+        <h2>${card.title}</h2>
+        ${itemsDropdown}
+        ${startBtn}
+      </div>
+      ${progressBar}
+      <div class="section-body" style="padding:4px 14px 10px;">
+        <ul id="list-${card.id}" style="padding:0; margin:0;">${items}</ul>
+      </div>
+    </div>`;
+}
+
+function buildModelDevPage() {
+  const grid = document.getElementById('model-dev-grid');
+  grid.innerHTML = '';
+
+  // Column 1: Baseline (top) + Baseline Search (bottom) stacked
+  const col1 = document.createElement('div');
+  col1.style.cssText = 'display:flex; flex-direction:column; gap:18px;';
+  col1.innerHTML =
+    buildCardHTML(DEV_CARDS.find(c => c.id === 'baseline-single')) +
+    buildCardHTML(DEV_CARDS.find(c => c.id === 'baseline'));
+  grid.appendChild(col1);
+
+  // Column 2: Proxy Scoring (500, top) + Proxy Scoring (5000, bottom)
+  const col2 = document.createElement('div');
+  col2.style.cssText = 'display:flex; flex-direction:column; gap:18px;';
+  col2.innerHTML =
+    buildCardHTML(DEV_CARDS.find(c => c.id === 'proxy')) +
+    buildCardHTML(DEV_CARDS.find(c => c.id === 'proxy-5000'));
+  grid.appendChild(col2);
+
+  // Column 3: Proxy Scoring + SH
+  const col3 = document.createElement('div');
+  col3.innerHTML = buildCardHTML(DEV_CARDS.find(c => c.id === 'proxy-sh'));
+  grid.appendChild(col3);
+
+  // Model mapping legend
+  const table = document.getElementById('model-legend-table');
+  if (table && Object.keys(modelMapping).length) {
+    table.innerHTML = Object.entries(modelMapping).map(([id, hfId]) => `
+      <tr>
+        <td style="padding:3px 16px 3px 0; white-space:nowrap; color:var(--text); font-weight:500;">${id}</td>
+        <td style="padding:3px 0; color:var(--text-muted); font-family:monospace; font-size:0.78rem;">${hfId}</td>
+      </tr>`).join('');
+  }
+
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+
+// ── Run-token: pressing Start again cancels the previous run ─────────────
+const _runTokens        = {};
+const _abortResolvers   = {};
+const _timerIntervals   = {};
+const _progressIntervals = {};
+
+function nextToken(cardId) {
+  if (_timerIntervals[cardId])    { clearInterval(_timerIntervals[cardId]);    _timerIntervals[cardId]    = null; }
+  if (_progressIntervals[cardId]) { clearInterval(_progressIntervals[cardId]); _progressIntervals[cardId] = null; }
+  if (_abortResolvers[cardId])    { _abortResolvers[cardId](); _abortResolvers[cardId] = null; }
+  _runTokens[cardId] = (_runTokens[cardId] ?? 0) + 1;
+  return _runTokens[cardId];
+}
+function tokenActive(cardId, token) {
+  return _runTokens[cardId] === token;
+}
+// returns a promise that resolves the instant nextToken(cardId) is called
+function abortSignal(cardId) {
+  return new Promise(resolve => { _abortResolvers[cardId] = resolve; });
+}
+// Simulation speed multiplier — controlled by the Speed slider (1x–5x)
+let SIM_SPEED = 10;
+
+// like sleep(ms) but resolves early if aborted, and respects SIM_SPEED
+function sleepC(ms, abort) {
+  return Promise.race([sleep(ms / SIM_SPEED), abort]);
+}
+
+function resetProgressBar(cardId) {
+  const data    = cardData[cardId];
+  const TOTAL   = data.data_collection_items ?? 5000;
+  const bar     = document.getElementById(`${cardId}-progress-bar`);
+  const label   = document.getElementById(`${cardId}-progress-label`);
+  const titleEl = document.getElementById(`${cardId}-progress-title`);
+  const timeEl  = document.getElementById(`${cardId}-progress-time`);
+  if (bar)     bar.style.width = '0%';
+  if (label)   label.textContent = `0 / ${TOTAL}`;
+  if (titleEl) titleEl.textContent = 'Collecting labeled data…';
+  if (timeEl)  timeEl.textContent = '';
+}
+
+// resolves when search_start_items is reached; bar continues filling in background
+// abort is the abortSignal promise — resolves immediately when run is cancelled
+async function runProgressBar(cardId, token, abort) {
+  const data   = cardData[cardId];
+  const TOTAL  = data.data_collection_items ?? 5000;
+  const START  = data.search_start_items ?? TOTAL;
+  const RATE   = data.labeling_speed ?? 1000;
+  const TICK   = 50;
+  const bar    = document.getElementById(`${cardId}-progress-bar`);
+  const label  = document.getElementById(`${cardId}-progress-label`);
+  if (!bar) return { complete: Promise.resolve() };
+
+  bar.style.width = '0%';
+  label.textContent = `0 / ${TOTAL}`;
+  const progressStart = Date.now();
+
+  let resolveComplete;
+  const complete = new Promise(r => resolveComplete = r);
+
+  let resolveAtStart;
+  const startReady = new Promise(r => resolveAtStart = r);
+
+  let count = 0;
+  let startResolved = false;
+  const iv = setInterval(() => {
+    if (_progressIntervals[cardId] !== iv) return; // superseded or killed by nextToken
+    count = Math.min(count + RATE * SIM_SPEED * (TICK / 1000), TOTAL);
+    bar.style.width = (count / TOTAL * 100) + '%';
+    label.textContent = `${Math.round(count)} / ${TOTAL}`;
+    if (!startResolved && count >= START) { startResolved = true; resolveAtStart(); }
+    if (count >= TOTAL) {
+      clearInterval(iv);
+      if (_progressIntervals[cardId] === iv) _progressIntervals[cardId] = null;
+      const elapsed = ((Date.now() - progressStart) / 1000).toFixed(1);
+      document.getElementById(`${cardId}-progress-title`).textContent = 'Collecting labeled data';
+      document.getElementById(`${cardId}-progress-time`).textContent = `Done in ${elapsed}s`;
+      resolveComplete();
+    }
+  }, TICK);
+  _progressIntervals[cardId] = iv;
+
+  // wait for START threshold OR cancellation — whichever comes first
+  await Promise.race([startReady, abort]);
+
+  if (!tokenActive(cardId, token)) {
+    clearInterval(iv);
+    if (_progressIntervals[cardId] === iv) _progressIntervals[cardId] = null;
+    resolveComplete();
+    return { complete: Promise.resolve() };
+  }
+
+  return { complete };
+}
+
+async function runCard(cardId) {
+  const token  = nextToken(cardId);
+  const models = cardData[cardId].models;
+  const btn     = document.getElementById(`${cardId}-start-btn`);
+  const timerEl = document.getElementById(`${cardId}-timer`);
+  const list    = document.getElementById(`list-${cardId}`);
+  const items   = list.querySelectorAll('li');
+
+  _onRunStart();
+  const abort = abortSignal(cardId);
+
+  // reset
+  btn.disabled = false;
+  btn.className = 'btn btn-warning';
+  btn.textContent = '↺ Restart';
+  timerEl.textContent = '0.0s';
+  resetProgressBar(cardId);
+  items.forEach(li => {
+    li.querySelector('.status-dot').dataset.status = 'idle';
+    li.querySelector('.model-accuracy').textContent = '';
+    li.style.background = '';
+    li.style.borderRadius = '';
+    const trophy = li.querySelector('.trophy');
+    if (trophy) trophy.remove();
+    const nameEl = li.querySelector('span:not(.status-dot):not(.model-accuracy)');
+    if (nameEl) { nameEl.style.fontWeight = ''; nameEl.style.color = ''; }
+    const accEl2 = li.querySelector('.model-accuracy');
+    if (accEl2) accEl2.style.fontWeight = '';
+  });
+
+  // restore original order
+  [...list.querySelectorAll('li')]
+    .sort((a, b) => +a.dataset.index - +b.dataset.index)
+    .forEach(el => list.appendChild(el));
+
+  let simElapsed = 0;
+  const timerInterval = setInterval(() => {
+    simElapsed += 0.1 * SIM_SPEED;
+    timerEl.textContent = simElapsed.toFixed(1) + 's';
+  }, 100);
+  _timerIntervals[cardId] = timerInterval;
+
+  // animate progress bar before model processing
+  const { complete: barComplete } = await runProgressBar(cardId, token, abort);
+  if (!tokenActive(cardId, token)) { _onRunEnd(); return; }
+
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
+    const li  = list.querySelector(`li[data-index="${i}"]`);
+    const dot = li.querySelector('.status-dot');
+    const acc = li.querySelector('.model-accuracy');
+
+    dot.dataset.status = 'running';
+    await sleepC(model.processing_time_ms, abort);
+    if (!tokenActive(cardId, token)) { _onRunEnd(); return; }
+    dot.dataset.status = 'done';
+    const label = cardId === 'proxy' ? 'proxy score' : 'accuracy';
+    acc.textContent = `${label}: ${model.accuracy.toFixed(2)}  ·  ${(model.processing_time_ms/1000).toFixed(1)}s`;
+
+    // re-sort with FLIP animation
+    const allLis = [...list.querySelectorAll('li')];
+    const before = new Map(allLis.map(el => [el, el.getBoundingClientRect().top]));
+
+    const done    = allLis.filter(el => el.querySelector('.status-dot').dataset.status === 'done')
+                          .sort((a, b) => models[+b.dataset.index].accuracy - models[+a.dataset.index].accuracy);
+    const pending = allLis.filter(el => el.querySelector('.status-dot').dataset.status !== 'done')
+                          .sort((a, b) => +a.dataset.index - +b.dataset.index);
+    [...done, ...pending].forEach(el => list.appendChild(el));
+
+    allLis.forEach(el => {
+      const delta = before.get(el) - el.getBoundingClientRect().top;
+      if (delta === 0) return;
+      el.style.transition = 'none';
+      el.style.transform = `translateY(${delta}px)`;
+      requestAnimationFrame(() => {
+        el.style.transition = 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        el.style.transform = 'translateY(0)';
+      });
+    });
+  }
+
+  // highlight winner
+  const winner = list.querySelector('li:first-child');
+  if (winner) {
+    winner.style.transition = 'background 0.4s';
+    winner.style.background = 'rgba(74, 222, 128, 0.12)';
+    winner.style.borderRadius = '6px';
+    const nameEl = winner.querySelector('span:not(.status-dot):not(.model-accuracy)');
+    if (nameEl) { nameEl.style.fontWeight = '700'; nameEl.style.color = 'var(--green)'; }
+    const accEl = winner.querySelector('.model-accuracy');
+    if (accEl) accEl.style.fontWeight = '700';
+    if (!winner.querySelector('.trophy')) winner.insertAdjacentHTML('beforeend', '<span class="trophy" style="font-size:1rem; margin-left:10px;">🏆</span>');
+  }
+
+  // for proxy cards: wait for full data collection before fine-tuning
+  if (cardId === 'proxy' || cardId === 'proxy-5000') {
+    await Promise.race([barComplete, abort]);
+    if (!tokenActive(cardId, token)) { _onRunEnd(); return; }
+  }
+
+  // for proxy cards: run the winning model for real using the appropriate ft data
+  if (cardId === 'proxy' || cardId === 'proxy-5000') {
+    const winnerLi = list.querySelector('li:first-child');
+    const winnerIndex = +winnerLi.dataset.index;
+    const winnerName  = models[winnerIndex].name;
+    // proxy (500) → dedicated small ft result; proxy-5000 or proxy(5000) → baseline_search.json
+    const proxyN = cardData[cardId].data_collection_items ?? 500;
+    const ftModel = (cardId === 'proxy' && proxyN <= 1000)
+      ? proxyFtSmall
+      : cardData['baseline'].models.find(m => m.name === winnerName);
+
+    if (ftModel && ftModel.processing_time_ms) {
+      const dot = winnerLi.querySelector('.status-dot');
+      const acc = winnerLi.querySelector('.model-accuracy');
+      dot.dataset.status = 'running';
+      acc.textContent = 'full fine-tuning…';
+      await sleepC(ftModel.processing_time_ms, abort);
+      if (!tokenActive(cardId, token)) { _onRunEnd(); return; }
+      dot.dataset.status = 'done';
+      acc.textContent = `accuracy: ${ftModel.accuracy.toFixed(2)}  ·  ${(ftModel.processing_time_ms/1000).toFixed(1)}s`;
+    }
+  }
+
+  clearInterval(timerInterval);
+  timerEl.textContent = simElapsed.toFixed(1) + 's';
+  btn.className = 'btn btn-success';
+  btn.style.marginLeft = 'auto';
+  btn.style.fontSize = '0.78rem';
+  btn.style.padding = '4px 10px';
+  btn.textContent = '▶ Start';
+  _onRunEnd();
+}
+
+let _activeRuns = 0;
+function _onRunStart() {
+  _activeRuns++;
+  const btn = document.getElementById('start-all-btn');
+  if (btn) { btn.className = 'btn btn-warning'; btn.textContent = '↺ Restart All'; }
+}
+function _onRunEnd() {
+  _activeRuns = Math.max(0, _activeRuns - 1);
+  if (_activeRuns === 0) {
+    const btn = document.getElementById('start-all-btn');
+    if (btn) { btn.className = 'btn btn-success'; btn.textContent = '▶▶ Start All'; }
+  }
+}
+
+function setProxyItems(n, cardId) {
+  const searchStart = cardData[cardId].search_start_items ?? n;
+  cardData[cardId].data_collection_items = n;
+  resetProgressBar(cardId);
+  const marker = document.getElementById(`${cardId}-progress-marker`);
+  if (marker) {
+    if (n > searchStart) {
+      marker.style.display = 'block';
+      marker.style.left = `${(searchStart / n) * 100}%`;
+    } else {
+      marker.style.display = 'none';
+    }
+  }
+}
+
+function startAll() {
+  runCard('baseline-single');
+  runCard('baseline');
+  runCard('proxy');
+  runCard('proxy-5000');
+  runProxySH();
+}
+
+// ── Proxy Scoring + SH ───────────────────────────────────────────────────
+async function runProxySH() {
+  const token  = nextToken('proxy-sh');
+  const data    = cardData['proxy-sh'];
+  const btn     = document.getElementById('proxy-sh-start-btn');
+  const timerEl = document.getElementById('proxy-sh-timer');
+  const list    = document.getElementById('list-proxy-sh');
+
+  _onRunStart();
+  const abort = abortSignal('proxy-sh');
+
+  // reset
+  btn.disabled = false;
+  btn.className = 'btn btn-warning';
+  btn.textContent = '↺ Restart';
+  timerEl.textContent = '0.0s';
+  resetProgressBar('proxy-sh');
+  list.querySelectorAll('li').forEach(li => {
+    li.querySelector('.status-dot').dataset.status = 'idle';
+    li.querySelector('.model-accuracy').textContent = '';
+    li.style.opacity = '1';
+    li.style.background = '';
+    li.style.borderRadius = '';
+    const trophy = li.querySelector('.trophy');
+    if (trophy) trophy.remove();
+    const nameEl = li.querySelector('span:not(.status-dot):not(.model-accuracy)');
+    if (nameEl) { nameEl.style.fontWeight = ''; nameEl.style.color = ''; }
+    const accEl2 = li.querySelector('.model-accuracy');
+    if (accEl2) accEl2.style.fontWeight = '';
+  });
+
+  // restore original order
+  [...list.querySelectorAll('li')]
+    .sort((a, b) => +a.dataset.index - +b.dataset.index)
+    .forEach(el => list.appendChild(el));
+
+  let simElapsed = 0;
+  const timerInterval = setInterval(() => {
+    simElapsed += 0.1 * SIM_SPEED; timerEl.textContent = simElapsed.toFixed(1) + 's';
+  }, 100);
+  _timerIntervals['proxy-sh'] = timerInterval;
+
+  // animate progress bar with 3 gate thresholds: 500, 1000, 2000
+  const SH_GATES   = [500, 1000, 2000];
+  const SH_TOTAL   = data.data_collection_items ?? 5000;
+  const SH_RATE    = data.labeling_speed ?? 13;
+  const SH_TICK    = 50;
+  const shBar      = document.getElementById('proxy-sh-progress-bar');
+  const shLabel    = document.getElementById('proxy-sh-progress-label');
+  shBar.style.width = '0%';
+  shLabel.textContent = `0 / ${SH_TOTAL}`;
+
+  const gateResolvers = [];
+  const gatePromises  = SH_GATES.map((_, i) => new Promise(r => { gateResolvers[i] = r; }));
+  let resolveBarComplete;
+  const barComplete = new Promise(r => { resolveBarComplete = r; });
+
+  let shCount = 0;
+  const shGateResolved = [false, false, false];
+  const shIv = setInterval(() => {
+    shCount = Math.min(shCount + SH_RATE * SIM_SPEED * (SH_TICK / 1000), SH_TOTAL);
+    shBar.style.width = (shCount / SH_TOTAL * 100) + '%';
+    shLabel.textContent = `${Math.round(shCount)} / ${SH_TOTAL}`;
+    SH_GATES.forEach((gate, i) => {
+      if (!shGateResolved[i] && shCount >= gate) { shGateResolved[i] = true; gateResolvers[i](); }
+    });
+    if (shCount >= SH_TOTAL) {
+      clearInterval(shIv);
+      document.getElementById('proxy-sh-progress-title').textContent = 'Collecting labeled data';
+      resolveBarComplete();
+    }
+  }, SH_TICK);
+  _progressIntervals['proxy-sh'] = shIv;
+
+  // track accumulated time per model name
+  const accumulated = {};
+
+  for (let r = 0; r < data.rounds.length; r++) {
+    // wait for gate before starting this round
+    await Promise.race([gatePromises[r], abort]);
+    if (!tokenActive('proxy-sh', token)) { _onRunEnd(); return; }
+
+    const round = data.rounds[r];
+    const roundMs = round.data_items * data.ms_per_data_item;
+    const activeNames = new Set(round.models.map(m => m.name));
+
+    // process each model in this round sequentially
+    for (const model of round.models) {
+      accumulated[model.name] = (accumulated[model.name] ?? 0) + roundMs;
+      const totalMs = accumulated[model.name];
+
+      // find li by model name
+      const allLis = [...list.querySelectorAll('li')];
+      const li = allLis.find(el => el.dataset.modelId === model.name);
+      if (!li) continue;
+
+      const dot = li.querySelector('.status-dot');
+      const acc = li.querySelector('.model-accuracy');
+
+      dot.dataset.status = 'running';
+      await sleepC(roundMs, abort);
+      if (!tokenActive('proxy-sh', token)) { _onRunEnd(); return; }
+      dot.dataset.status = 'done';
+      acc.textContent = `proxy score: ${model.proxy_score.toFixed(2)}  ·  ${(totalMs/1000).toFixed(1)}s`;
+
+      // FLIP re-sort within active models; eliminated stay at bottom
+      const activeLis   = allLis.filter(el => activeNames.has(el.dataset.modelId));
+      const eliminatedLis = allLis.filter(el => !activeLis.includes(el));
+
+      const before = new Map(allLis.map(el => [el, el.getBoundingClientRect().top]));
+
+      const doneLis    = activeLis.filter(el => el.querySelector('.status-dot').dataset.status === 'done')
+        .sort((a, b) => {
+          const scoreA = round.models.find(m => m.name === a.dataset.modelId)?.proxy_score ?? 0;
+          const scoreB = round.models.find(m => m.name === b.dataset.modelId)?.proxy_score ?? 0;
+          return scoreB - scoreA;
+        });
+      const pendingLis = activeLis.filter(el => el.querySelector('.status-dot').dataset.status !== 'done')
+        .sort((a, b) => +a.dataset.index - +b.dataset.index);
+
+      [...doneLis, ...pendingLis, ...eliminatedLis].forEach(el => list.appendChild(el));
+
+      allLis.forEach(el => {
+        const delta = before.get(el) - el.getBoundingClientRect().top;
+        if (delta === 0) return;
+        el.style.transition = 'none';
+        el.style.transform = `translateY(${delta}px)`;
+        requestAnimationFrame(() => {
+          el.style.transition = 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+          el.style.transform = 'translateY(0)';
+        });
+      });
+    }
+
+    // grey out models not continuing to next round; reset continuing ones
+    if (r < data.rounds.length - 1) {
+      const nextNames = new Set(data.rounds[r + 1].models.map(m => m.name));
+      list.querySelectorAll('li').forEach(li => {
+        const name = li.dataset.modelId;
+        if (!nextNames.has(name)) {
+          li.style.transition = 'opacity 0.4s';
+          li.style.opacity = '0.3';
+          li.querySelector('.status-dot').dataset.status = 'idle';
+        } else {
+          li.querySelector('.status-dot').dataset.status = 'idle';
+          li.querySelector('.model-accuracy').textContent = '';
+        }
+      });
+      // small pause so greyout is visible before next round starts
+      await sleepC(400, abort);
+      if (!tokenActive('proxy-sh', token)) { _onRunEnd(); return; }
+    }
+  }
+
+  // highlight overall winner (top of sorted list among active)
+  const winner = list.querySelector('li:not([style*="opacity: 0.3"]):first-child') ?? list.querySelector('li:first-child');
+  if (winner) {
+    winner.style.transition = 'background 0.4s';
+    winner.style.background = 'rgba(74, 222, 128, 0.12)';
+    winner.style.borderRadius = '6px';
+    const nameEl = winner.querySelector('span:not(.status-dot):not(.model-accuracy)');
+    if (nameEl) { nameEl.style.fontWeight = '700'; nameEl.style.color = 'var(--green)'; }
+    const accEl = winner.querySelector('.model-accuracy');
+    if (accEl) accEl.style.fontWeight = '700';
+    if (!winner.querySelector('.trophy')) winner.insertAdjacentHTML('beforeend', '<span class="trophy" style="font-size:1rem; margin-left:10px;">🏆</span>');
+
+    // wait for data collection to complete before fine-tuning
+    await barComplete;
+    if (!tokenActive('proxy-sh', token)) { _onRunEnd(); return; }
+
+    // full fine-tuning of winner — use data.winner from proxy_scoring_sh.json
+    const ftModel = data.winner
+      ?? (() => { const n = data.rounds[0].models[+winner.dataset.index]?.name;
+                  return cardData['baseline'].models?.find(m => m.name === n); })();
+    if (ftModel) {
+      const dot = winner.querySelector('.status-dot');
+      const acc = winner.querySelector('.model-accuracy');
+      dot.dataset.status = 'running';
+      acc.textContent = 'full fine-tuning…';
+      await sleepC(ftModel.processing_time_ms, abort);
+      if (!tokenActive('proxy-sh', token)) { _onRunEnd(); return; }
+      dot.dataset.status = 'done';
+      acc.textContent = `accuracy: ${ftModel.accuracy.toFixed(2)}  ·  ${(ftModel.processing_time_ms/1000).toFixed(1)}s`;
+    }
+  }
+
+  clearInterval(timerInterval);
+  clearInterval(shIv);
+  timerEl.textContent = simElapsed.toFixed(1) + 's';
+  btn.className = 'btn btn-success';
+  btn.style.marginLeft = 'auto';
+  btn.style.fontSize = '0.78rem';
+  btn.style.padding = '4px 10px';
+  btn.textContent = '▶ Start';
+  _onRunEnd();
+}
+
+const STATUS_CYCLE = ['idle', 'running', 'done'];
+function cycleStatus(dot) {
+  const cur = dot.dataset.status;
+  dot.dataset.status = STATUS_CYCLE[(STATUS_CYCLE.indexOf(cur) + 1) % STATUS_CYCLE.length];
+}
+
+// ── View switching ────────────────────────────────────────────────────────
+const VIEWS = ['view-main', 'view-model-dev'];
+function showView(name) {
+  const id = name === 'main' ? 'view-main' : 'view-' + name;
+  VIEWS.forEach(v => {
+    const el = document.getElementById(v);
+    el.style.display = (v === id) ? (v === 'view-main' ? '' : 'flex') : 'none';
+  });
+}
+
 // ── Init — load models + use-cases first, then scenarios (so selects are populated)
+loadCardData().then(() => buildModelDevPage());
 Promise.all([loadModelData(), loadUseCases(), loadMeasuredResults()]).then(() => loadScenarioList());
 </script>
 </body>

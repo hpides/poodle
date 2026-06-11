@@ -1,0 +1,12 @@
+{
+  "model-1":  "google-bert/bert-base-uncased",
+  "model-2":  "distilbert/distilbert-base-uncased-finetuned-sst-2-english",
+  "model-3":  "rttl-ai/bert-base-uncased-yelp-reviews",
+  "model-4":  "saitejautpala/bert-base-yelp-reviews",
+  "model-5":  "Elenapervova/bio-distilbert-uncased-mimic-iii",
+  "model-6":  "textattack/bert-base-uncased-CoLA",
+  "model-7":  "cnut1648/biolinkbert-mednli",
+  "model-8":  "Hate-speech-CNERG/bert-base-uncased-hatexplain",
+  "model-9":  "JungleLee/bert-toxic-comment-classification",
+  "model-10": "vittoriomaggio/bert-base-msmarco-fiqa"
+}

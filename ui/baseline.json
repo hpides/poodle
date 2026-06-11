@@ -1,0 +1,8 @@
+{
+  "data_collection_items": 5000,
+  "search_start_items": 5000,
+  "labeling_speed": 13,
+  "models": [
+    { "name": "model-1", "accuracy": 0.91, "processing_time_ms": 210497 }
+  ]
+}

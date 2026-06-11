@@ -1,0 +1,59 @@
+{
+  "data_collection_items": 1000,
+  "search_start_items": 1000,
+  "labeling_speed": 13,
+  "models": [
+    {
+      "name": "model-1",
+      "accuracy": 0.716,
+      "processing_time_ms": 10353
+    },
+    {
+      "name": "model-2",
+      "accuracy": 0.898,
+      "processing_time_ms": 5657
+    },
+    {
+      "name": "model-3",
+      "accuracy": 0.914,
+      "processing_time_ms": 10149,
+      "full_accuracy": 0.912,
+      "full_processing_time_ms": 29405
+    },
+    {
+      "name": "model-4",
+      "accuracy": 0.876,
+      "processing_time_ms": 10088
+    },
+    {
+      "name": "model-5",
+      "accuracy": 0.506,
+      "processing_time_ms": 10122
+    },
+    {
+      "name": "model-6",
+      "accuracy": 0.574,
+      "processing_time_ms": 10478
+    },
+    {
+      "name": "model-7",
+      "accuracy": 0.74,
+      "processing_time_ms": 30165
+    },
+    {
+      "name": "model-8",
+      "accuracy": 0.636,
+      "processing_time_ms": 11696
+    },
+    {
+      "name": "model-9",
+      "accuracy": 0.81,
+      "processing_time_ms": 10493
+    },
+    {
+      "name": "model-10",
+      "accuracy": 0.498,
+      "processing_time_ms": 10497
+    }
+  ]
+}
