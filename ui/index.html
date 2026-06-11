@@ -2096,10 +2096,7 @@ async function runProxySH() {
 
       // find li by model name
       const allLis = [...list.querySelectorAll('li')];
-      const li = allLis.find(el => {
-        const idx = +el.dataset.index;
-        return data.rounds[0].models[idx]?.name === model.name;
-      });
+      const li = allLis.find(el => el.dataset.modelId === model.name);
       if (!li) continue;
 
       const dot = li.querySelector('.status-dot');
@@ -2112,19 +2109,15 @@ async function runProxySH() {
       acc.textContent = `proxy score: ${model.proxy_score.toFixed(2)}  ·  ${(totalMs/1000).toFixed(1)}s`;
 
       // FLIP re-sort within active models; eliminated stay at bottom
-      const activeLis   = allLis.filter(el => {
-        const idx = +el.dataset.index;
-        const name = data.rounds[0].models[idx]?.name;
-        return activeNames.has(name);
-      });
+      const activeLis   = allLis.filter(el => activeNames.has(el.dataset.modelId));
       const eliminatedLis = allLis.filter(el => !activeLis.includes(el));
 
       const before = new Map(allLis.map(el => [el, el.getBoundingClientRect().top]));
 
       const doneLis    = activeLis.filter(el => el.querySelector('.status-dot').dataset.status === 'done')
         .sort((a, b) => {
-          const scoreA = round.models.find(m => m.name === data.rounds[0].models[+a.dataset.index]?.name)?.proxy_score ?? 0;
-          const scoreB = round.models.find(m => m.name === data.rounds[0].models[+b.dataset.index]?.name)?.proxy_score ?? 0;
+          const scoreA = round.models.find(m => m.name === a.dataset.modelId)?.proxy_score ?? 0;
+          const scoreB = round.models.find(m => m.name === b.dataset.modelId)?.proxy_score ?? 0;
           return scoreB - scoreA;
         });
       const pendingLis = activeLis.filter(el => el.querySelector('.status-dot').dataset.status !== 'done')
@@ -2148,8 +2141,7 @@ async function runProxySH() {
     if (r < data.rounds.length - 1) {
       const nextNames = new Set(data.rounds[r + 1].models.map(m => m.name));
       list.querySelectorAll('li').forEach(li => {
-        const idx  = +li.dataset.index;
-        const name = data.rounds[0].models[idx]?.name;
+        const name = li.dataset.modelId;
         if (!nextNames.has(name)) {
           li.style.transition = 'opacity 0.4s';
           li.style.opacity = '0.3';
