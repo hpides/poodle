@@ -1601,7 +1601,8 @@ async function loadCardData() {
 
 function buildCardHTML(card) {
   const models = card.id === 'proxy-sh'
-    ? cardData['proxy-sh'].rounds[0]?.models ?? []
+    ? [...(cardData['proxy-sh'].rounds[0]?.models ?? [])]
+        .sort((a, b) => parseInt(a.name.replace('model-','')) - parseInt(b.name.replace('model-','')))
     : cardData[card.id]?.models ?? [];
 
   const items = models.map((m, i) => `
@@ -1635,7 +1636,12 @@ function buildCardHTML(card) {
       </div>
       <div style="position:relative; background:var(--surface2); border:1px solid var(--border); border-radius:6px; height:10px; overflow:hidden;">
         <div id="${card.id}-progress-bar" style="height:100%; width:0%; background:var(--accent); border-radius:6px; transition:none;"></div>
-        ${(() => {
+        ${card.id === 'proxy-sh' ? (() => {
+          const total = cardData[card.id]?.data_collection_items ?? 5000;
+          return [500, 1000, 2000].map(m =>
+            `<div style="position:absolute; top:0; left:${(m/total*100)}%; height:100%; width:2px; background:var(--text); opacity:0.6;"></div>`
+          ).join('');
+        })() : (() => {
           const total = cardData[card.id]?.data_collection_items ?? 5000;
           const start = cardData[card.id]?.search_start_items ?? total;
           return `<div id="${card.id}-progress-marker" style="position:absolute; top:0; left:${(start/total*100)}%; height:100%; width:2px; background:var(--text); opacity:0.6; display:${start < total ? 'block' : 'none'};"></div>`;
@@ -1995,14 +2001,46 @@ async function runProxySH() {
   }, 100);
   _timerIntervals['proxy-sh'] = timerInterval;
 
-  // animate progress bar; resolves at search_start_items, barComplete resolves at data_collection_items
-  const { complete: barComplete } = await runProgressBar('proxy-sh', token, abort);
-  if (!tokenActive('proxy-sh', token)) { _onRunEnd(); return; }
+  // animate progress bar with 3 gate thresholds: 500, 1000, 2000
+  const SH_GATES   = [500, 1000, 2000];
+  const SH_TOTAL   = data.data_collection_items ?? 5000;
+  const SH_RATE    = data.labeling_speed ?? 13;
+  const SH_TICK    = 50;
+  const shBar      = document.getElementById('proxy-sh-progress-bar');
+  const shLabel    = document.getElementById('proxy-sh-progress-label');
+  shBar.style.width = '0%';
+  shLabel.textContent = `0 / ${SH_TOTAL}`;
+
+  const gateResolvers = [];
+  const gatePromises  = SH_GATES.map((_, i) => new Promise(r => { gateResolvers[i] = r; }));
+  let resolveBarComplete;
+  const barComplete = new Promise(r => { resolveBarComplete = r; });
+
+  let shCount = 0;
+  const shGateResolved = [false, false, false];
+  const shIv = setInterval(() => {
+    shCount = Math.min(shCount + SH_RATE * SIM_SPEED * (SH_TICK / 1000), SH_TOTAL);
+    shBar.style.width = (shCount / SH_TOTAL * 100) + '%';
+    shLabel.textContent = `${Math.round(shCount)} / ${SH_TOTAL}`;
+    SH_GATES.forEach((gate, i) => {
+      if (!shGateResolved[i] && shCount >= gate) { shGateResolved[i] = true; gateResolvers[i](); }
+    });
+    if (shCount >= SH_TOTAL) {
+      clearInterval(shIv);
+      document.getElementById('proxy-sh-progress-title').textContent = 'Collecting labeled data';
+      resolveBarComplete();
+    }
+  }, SH_TICK);
+  _progressIntervals['proxy-sh'] = shIv;
 
   // track accumulated time per model name
   const accumulated = {};
 
   for (let r = 0; r < data.rounds.length; r++) {
+    // wait for gate before starting this round
+    await Promise.race([gatePromises[r], abort]);
+    if (!tokenActive('proxy-sh', token)) { _onRunEnd(); return; }
+
     const round = data.rounds[r];
     const roundMs = round.data_items * data.ms_per_data_item;
     const activeNames = new Set(round.models.map(m => m.name));
@@ -2099,22 +2137,24 @@ async function runProxySH() {
     await barComplete;
     if (!tokenActive('proxy-sh', token)) { _onRunEnd(); return; }
 
-    // full fine-tuning of winner using baseline data
-    const winnerName    = data.rounds[0].models[+winner.dataset.index]?.name;
-    const baselineModel = cardData['baseline'].models.find(m => m.name === winnerName);
-    if (baselineModel) {
+    // full fine-tuning of winner — use data.winner from proxy_scoring_sh.json
+    const ftModel = data.winner
+      ?? (() => { const n = data.rounds[0].models[+winner.dataset.index]?.name;
+                  return cardData['baseline'].models?.find(m => m.name === n); })();
+    if (ftModel) {
       const dot = winner.querySelector('.status-dot');
       const acc = winner.querySelector('.model-accuracy');
       dot.dataset.status = 'running';
       acc.textContent = 'full fine-tuning…';
-      await sleepC(baselineModel.processing_time_ms, abort);
+      await sleepC(ftModel.processing_time_ms, abort);
       if (!tokenActive('proxy-sh', token)) { _onRunEnd(); return; }
       dot.dataset.status = 'done';
-      acc.textContent = `accuracy: ${baselineModel.accuracy.toFixed(2)}  ·  ${(baselineModel.processing_time_ms/1000).toFixed(1)}s`;
+      acc.textContent = `accuracy: ${ftModel.accuracy.toFixed(2)}  ·  ${(ftModel.processing_time_ms/1000).toFixed(1)}s`;
     }
   }
 
   clearInterval(timerInterval);
+  clearInterval(shIv);
   timerEl.textContent = simElapsed.toFixed(1) + 's';
   btn.className = 'btn btn-success';
   btn.style.marginLeft = 'auto';
