@@ -188,6 +188,13 @@
     }
 
     /* ── Main layout ─────────────────────────────────────────────────── */
+    #view-main {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
     .layout {
       flex: 1;
       min-height: 0;
@@ -774,7 +781,14 @@
     <button class="btn btn-ghost" onclick="showView('main')">← Back</button>
     <div class="logo" style="font-size:1.1rem;">🔧 Model Development</div>
     <button id="start-all-btn" class="btn btn-success" style="position:absolute; left:50%; transform:translateX(-50%);" onclick="startAll()">▶▶ Start All</button>
-    <div style="margin-left:auto; display:flex; align-items:center; gap:8px; font-size:0.8rem; color:var(--text-muted);">
+    <div style="margin-left:auto; display:flex; align-items:center; gap:12px; font-size:0.8rem; color:var(--text-muted);">
+<span>Model naming</span>
+      <select id="model-naming-select" onchange="setModelNaming(this.value);"
+        style="padding:3px 6px; font-size:0.8rem; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); cursor:pointer;">
+        <option value="model-x" selected>model-x</option>
+        <option value="short">short</option>
+        <option value="full">full</option>
+      </select>
       <span>Speed</span>
       <select onchange="SIM_SPEED = +this.value;"
         style="padding:3px 6px; font-size:0.8rem; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); cursor:pointer;">
@@ -1586,6 +1600,24 @@ const DEV_CARDS = [
   { id: 'proxy-sh',        icon: '🎯', title: 'Proxy Scoring + SH',    api: '/api/proxy-scoring-sh' },
 ];
 
+let modelMapping = {};
+let modelNaming = 'model-x';
+
+function modelDisplayName(id) {
+  if (modelNaming === 'model-x') return id;
+  const full = modelMapping[id] ?? id;
+  if (modelNaming === 'full') return full;
+  // short: everything after the last "/"
+  return full.includes('/') ? full.split('/').pop() : full;
+}
+
+function setModelNaming(mode) {
+  modelNaming = mode;
+  document.querySelectorAll('li[data-model-id] .model-label').forEach(el => {
+    el.textContent = modelDisplayName(el.closest('li').dataset.modelId);
+  });
+}
+
 async function loadCardData() {
   await Promise.all([
     ...DEV_CARDS.filter(c => c.api).map(async c => {
@@ -1593,6 +1625,7 @@ async function loadCardData() {
       cardData[c.id] = await res.json();
     }),
     fetch('/api/proxy-ft-small').then(r => r.json()).then(d => { proxyFtSmall = d; }),
+    fetch('/api/model-mapping').then(r => r.json()).then(d => { modelMapping = d; }),
   ]);
   // proxy-5000 loads the same JSON as proxy but should default to 5000 items
   cardData['proxy-5000'].data_collection_items = 5000;
@@ -1606,9 +1639,9 @@ function buildCardHTML(card) {
     : cardData[card.id]?.models ?? [];
 
   const items = models.map((m, i) => `
-    <li data-index="${i}" style="display:flex; align-items:center; padding:5px 0; border-bottom:1px solid var(--border); list-style:none;">
+    <li data-index="${i}" data-model-id="${m.name}" style="display:flex; align-items:center; padding:5px 0; border-bottom:1px solid var(--border); list-style:none;">
       <span class="status-dot" data-status="idle"></span>
-      <span style="font-size:1rem;">${m.name}</span>
+      <span class="model-label" style="font-size:1rem;">${modelDisplayName(m.name)}</span>
       <span class="model-accuracy" style="margin-left:auto; font-size:1rem; color:var(--text-muted);"></span>
     </li>`).join('');
 
@@ -1689,6 +1722,17 @@ function buildModelDevPage() {
   const col3 = document.createElement('div');
   col3.innerHTML = buildCardHTML(DEV_CARDS.find(c => c.id === 'proxy-sh'));
   grid.appendChild(col3);
+
+  // Model mapping legend
+  const table = document.getElementById('model-legend-table');
+  if (table && Object.keys(modelMapping).length) {
+    table.innerHTML = Object.entries(modelMapping).map(([id, hfId]) => `
+      <tr>
+        <td style="padding:3px 16px 3px 0; white-space:nowrap; color:var(--text); font-weight:500;">${id}</td>
+        <td style="padding:3px 0; color:var(--text-muted); font-family:monospace; font-size:0.78rem;">${hfId}</td>
+      </tr>`).join('');
+  }
+
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -2065,7 +2109,7 @@ async function runProxySH() {
       await sleepC(roundMs, abort);
       if (!tokenActive('proxy-sh', token)) { _onRunEnd(); return; }
       dot.dataset.status = 'done';
-      acc.textContent = `proxy score: ${model.proxy_score.toFixed(2)}  ·  ${totalMs}ms`;
+      acc.textContent = `proxy score: ${model.proxy_score.toFixed(2)}  ·  ${(totalMs/1000).toFixed(1)}s`;
 
       // FLIP re-sort within active models; eliminated stay at bottom
       const activeLis   = allLis.filter(el => {

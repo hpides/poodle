@@ -214,6 +214,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             ps_path = ROOT / "proxy_scoring_sh.json"
             data = json.loads(ps_path.read_text()) if ps_path.exists() else {"rounds": []}
             self._send(200, "application/json", json.dumps(data).encode())
+        elif self.path == "/api/model-mapping":
+            mm_path = ROOT / "models.json"
+            data = json.loads(mm_path.read_text()) if mm_path.exists() else {}
+            self._send(200, "application/json", json.dumps(data).encode())
         else:
             self._send(404, "text/plain", b"Not found")
 
