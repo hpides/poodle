@@ -61,6 +61,14 @@
       flex-direction: column;
     }
 
+    /* ── Number source icons ─────────────────────────────────────────── */
+    .hide-sources .num-source-icon { display: none; }
+    .source-toggle { display:flex; align-items:center; gap:7px; font-size:0.8rem; color:var(--text-muted); cursor:pointer; user-select:none; }
+    .source-toggle input[type=checkbox] { appearance:none; width:30px; height:16px; border-radius:8px; background:var(--surface2); border:1px solid var(--border); cursor:pointer; position:relative; transition:background 0.2s; flex-shrink:0; }
+    .source-toggle input[type=checkbox]::after { content:''; position:absolute; top:2px; left:2px; width:10px; height:10px; border-radius:50%; background:var(--text-muted); transition:transform 0.2s, background 0.2s; }
+    .source-toggle input[type=checkbox]:checked { background:var(--accent); border-color:var(--accent); }
+    .source-toggle input[type=checkbox]:checked::after { transform:translateX(14px); background:#fff; }
+
     /* ── Header ──────────────────────────────────────────────────────── */
     header {
       flex-shrink: 0;
@@ -441,7 +449,32 @@
 <header>
   <div class="logo">🐩 Poodle</div>
   <div class="subtitle">Just-in-time Model Replacement</div>
-  <div class="actions"></div>
+  <div class="actions" style="margin-left:auto; display:flex; align-items:center; gap:18px;">
+    <label class="source-toggle">
+      <input type="checkbox" id="sources-toggle" checked onchange="document.body.classList.toggle('hide-sources', !this.checked)">
+      show number sources
+    </label>
+    <script>
+      document.getElementById('sources-toggle').addEventListener('change', function() {
+        const show = this.checked;
+        document.body.classList.toggle('hide-sources', !show);
+        const suffix = show ? ' 🧮' : '';
+        if (typeof PLOT_EL !== 'undefined') {
+          Plotly.relayout(PLOT_EL,    { 'title.text': 'Cost Comparison' + suffix });
+          Plotly.relayout(SAVINGS_EL, { 'title.text': 'Cost Savings'    + suffix });
+        }
+      });
+    </script>
+    <span class="num-source-icon" style="display:flex; align-items:center; gap:6px; font-size:0.88rem; color:var(--text);">
+      <span style="font-size:1.4rem;">🗂️</span> looked up
+    </span>
+    <span class="num-source-icon" style="display:flex; align-items:center; gap:6px; font-size:0.88rem; color:var(--text);">
+      <span style="font-size:1.4rem;">⏱️</span> measured
+    </span>
+    <span class="num-source-icon" style="display:flex; align-items:center; gap:6px; font-size:0.88rem; color:var(--text);">
+      <span style="font-size:1.4rem;">🧮</span> calculated
+    </span>
+  </div>
 </header>
 
 <div id="view-main">
@@ -470,11 +503,11 @@
     <div class="stat-section-label">Value</div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
       <div class="stat-card">
-        <div class="stat-label">Savings at max requests</div>
+        <div class="stat-label">Savings <span class="num-source-icon">🧮</span></div>
         <div class="stat-value green" id="stat-savings">—</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Savings %</div>
+        <div class="stat-label">Savings % <span class="num-source-icon">🧮</span></div>
         <div class="stat-value green" id="stat-savings-pct">—</div>
       </div>
     </div>
@@ -484,11 +517,11 @@
     <div class="stat-section-label">Timeline</div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
       <div class="stat-card">
-        <div class="stat-label">Break-even</div>
+        <div class="stat-label">Break-even <span class="num-source-icon">🧮</span></div>
         <div class="stat-value muted" id="stat-breakeven">—</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Earliest switch</div>
+        <div class="stat-label" id="stat-earliest-switch-label">Earliest switch</div>
         <div class="stat-value muted" id="stat-earliest-switch">—</div>
       </div>
     </div>
@@ -500,8 +533,8 @@
         <thead>
           <tr>
             <th class="row-hdr"></th>
-            <th class="col-llm">LLM</th>
-            <th class="col-poodle">Poodle</th>
+            <th class="col-llm">LLM <span class="num-source-icon" id="th-llm-icon"></span></th>
+            <th class="col-poodle">Poodle <span class="num-source-icon">⏱️</span></th>
           </tr>
         </thead>
         <tbody>
@@ -534,7 +567,7 @@
         <span class="info-icon" style="position:absolute; top:10px; right:10px;">i<span class="info-tooltip">Pricing per 1M tokens for each available model. Custom models can be added below.</span></span>
         <div class="section-header">
           <div class="icon">💰</div>
-          <h2>Model Prices</h2>
+          <h2>Model Prices <span class="num-source-icon" style="font-size:1.4em;">🗂️</span></h2>
         </div>
         <div class="section-body" style="display:flex; flex-direction:column; flex:1; min-height:0;">
           <div style="max-height:200px; overflow-y: auto; border-radius: 6px; border: 1px solid var(--border);">
@@ -869,7 +902,7 @@ const PLOT_LAYOUT = {
     bgcolor: 'rgba(26,29,39,0.8)',
     bordercolor: '#2e3352', borderwidth: 1,
   },
-  title: { text: 'Cost Comparison', font: { ...CHART_FONT, size: 14, color: '#c8cee8' }, x: 0.5, xanchor: 'center', y: 0.98, yanchor: 'top' },
+  title: { text: 'Cost Comparison 🧮', font: { ...CHART_FONT, size: 14, color: '#c8cee8' }, x: 0.5, xanchor: 'center', y: 0.98, yanchor: 'top' },
   hovermode: 'x unified',
   hoverlabel: {
     bgcolor: '#1a1d27', bordercolor: '#2e3352',
@@ -886,7 +919,7 @@ const PLOT_CONFIG = {
 
 const SAVINGS_LAYOUT = {
   ...PLOT_LAYOUT,
-  title: { text: 'Cost Savings', font: { ...CHART_FONT, size: 14, color: '#c8cee8' }, x: 0.5, xanchor: 'center', y: 0.98, yanchor: 'top' },
+  title: { text: 'Cost Savings 🧮', font: { ...CHART_FONT, size: 14, color: '#c8cee8' }, x: 0.5, xanchor: 'center', y: 0.98, yanchor: 'top' },
   yaxis: {
     ...PLOT_LAYOUT.yaxis,
     title: { text: 'Savings (USD)', standoff: 6, font: CHART_FONT },
@@ -960,12 +993,12 @@ function updateAccuracy() {
   document.getElementById('stat-poodle-accuracy').textContent = poodleRow ? fmt(poodleRow.accuracy)            : '???';
   document.getElementById('stat-ips-llm').textContent         = llmRow    ? fmtIps(llmRow['items-per-second']) : '???';
   document.getElementById('stat-ips-poodle').textContent      = poodleRow ? fmtIps(poodleRow['items-per-second']) : '???';
+  document.getElementById('th-llm-icon').textContent = llmRow ? '⏱️' : '';
 
   const devTimeSec = poodleRow?.dev_time;
-  document.getElementById('stat-earliest-switch').textContent =
-    (devTimeSec !== null && devTimeSec !== undefined && devTimeSec >= 0)
-      ? (devTimeSec / 60).toFixed(1) + ' min'
-      : '???';
+  const hasSwitch = devTimeSec !== null && devTimeSec !== undefined && devTimeSec >= 0;
+  document.getElementById('stat-earliest-switch').textContent = hasSwitch ? (devTimeSec / 60).toFixed(1) + ' min' : '???';
+  document.getElementById('stat-earliest-switch-label').innerHTML = hasSwitch ? 'Earliest switch <span class="num-source-icon">⏱️</span>' : 'Earliest switch';
 
 }
 
