@@ -531,20 +531,20 @@
         <thead>
           <tr>
             <th class="row-hdr"></th>
-            <th>Accuracy</th>
-            <th>Items / s</th>
-            <th>Min time</th>
+            <th>Accuracy <span class="num-source-icon">⏱️</span></th>
+            <th>Items / s <span class="num-source-icon">⏱️</span></th>
+            <th>Min time <span class="num-source-icon">🧮</span></th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td class="row-hdr col-llm">LLM <span class="num-source-icon" id="th-llm-icon"></span></td>
+            <td class="row-hdr col-llm">LLM</td>
             <td class="col-llm" id="stat-llm-accuracy">—</td>
             <td class="col-llm" id="stat-ips-llm">—</td>
             <td class="col-llm" id="stat-mintime-llm">???</td>
           </tr>
           <tr>
-            <td class="row-hdr col-poodle">Poodle <span class="num-source-icon">⏱️</span></td>
+            <td class="row-hdr col-poodle">Poodle</td>
             <td class="col-poodle" id="stat-poodle-accuracy">—</td>
             <td class="col-poodle" id="stat-ips-poodle">—</td>
             <td class="col-poodle" id="stat-mintime-poodle">—</td>
@@ -995,15 +995,23 @@ function updateAccuracy() {
   document.getElementById('stat-poodle-accuracy').textContent = poodleRow ? fmt(poodleRow.accuracy)            : '???';
   document.getElementById('stat-ips-llm').textContent         = llmRow    ? fmtIps(llmRow['items-per-second']) : '???';
   document.getElementById('stat-ips-poodle').textContent      = poodleRow ? fmtIps(poodleRow['items-per-second']) : '???';
-  document.getElementById('th-llm-icon').textContent          = llmRow    ? '⏱️' : '';
-  const fmtTime = v => (v !== null && v !== undefined && v >= 0) ? (v / 60).toFixed(1) + ' min' : '???';
-  document.getElementById('stat-mintime-llm').textContent    = fmtTime(switchTimeLLM);
+  const fmtTime = v => {
+    if (v === null || v === undefined || v < 0) return '???';
+    const mins = v / 60;
+    return mins >= 60 ? (mins / 60).toFixed(1) + ' h' : mins.toFixed(1) + ' min';
+  };
+  const totalRequests  = parseInt(document.getElementById('expected_requests')?.value)    || 0;
+  const switchAfterN   = parseInt(document.getElementById('switch_after_n_items')?.value) || 0;
+  const params = new URLSearchParams({ large_model: largeModel, small_model: smallModel, use_case: useCase, dev_approach: devApproach, total_requests: totalRequests, switch_after_n_items: switchAfterN });
+  document.getElementById('stat-mintime-llm').textContent    = '???';
+  document.getElementById('stat-mintime-poodle').textContent = '???';
+  fetch('/api/switch-time-llm?'    + params).then(r => r.json()).then(d => { switchTimeLLM    = d.value; document.getElementById('stat-mintime-llm').textContent    = fmtTime(d.value); });
+  fetch('/api/switch-time-poodle?' + params).then(r => r.json()).then(d => { switchTimePoodle = d.value; document.getElementById('stat-mintime-poodle').textContent = fmtTime(d.value); });
 
   const devTimeSec = poodleRow?.dev_time;
   const hasSwitch = devTimeSec !== null && devTimeSec !== undefined && devTimeSec >= 0;
-  document.getElementById('stat-earliest-switch').textContent = hasSwitch ? (devTimeSec / 60).toFixed(1) + ' min' : '???';
+  document.getElementById('stat-earliest-switch').textContent = hasSwitch ? fmtTime(devTimeSec) : '???';
   document.getElementById('stat-earliest-switch-label').innerHTML = hasSwitch ? 'Earliest switch <span class="num-source-icon">⏱️</span>' : 'Earliest switch';
-  document.getElementById('stat-mintime-poodle').textContent = fmtTime(switchTimePoodle);
 
 }
 
@@ -1666,8 +1674,6 @@ async function loadCardData() {
     }),
     fetch('/api/proxy-ft-small').then(r => r.json()).then(d => { proxyFtSmall = d; }),
     fetch('/api/model-mapping').then(r => r.json()).then(d => { modelMapping = d; }),
-    fetch('/api/switch-time-llm').then(r => r.json()).then(d => { switchTimeLLM = d.value; }),
-    fetch('/api/switch-time-poodle').then(r => r.json()).then(d => { switchTimePoodle = d.value; }),
   ]);
   // proxy-5000 loads the same JSON as proxy but should default to 5000 items
   cardData['proxy-5000'].data_collection_items = 5000;
@@ -2260,7 +2266,7 @@ function showView(name) {
 
 // ── Init — load models + use-cases first, then scenarios (so selects are populated)
 loadCardData().then(() => buildModelDevPage());
-Promise.all([loadModelData(), loadUseCases(), loadMeasuredResults()]).then(() => loadScenarioList());
+Promise.all([loadModelData(), loadUseCases(), loadMeasuredResults()]).then(() => loadScenarioList().then(() => updateAccuracy()));
 </script>
 </body>
 </html>

@@ -15,6 +15,7 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse, parse_qs
 
 # Make the repo root importable so demo.* modules work
 ROOT      = Path(__file__).parent
@@ -29,7 +30,7 @@ from demo.demo_config import (
 import cost_break_even.price_estimation as pe
 from cost_break_even.price_estimation import (
     single_model_price, poodle_price, MODEL_PRICING_PER_1M,
-    INPUT, OUTPUT, analytical_break_even,
+    INPUT, OUTPUT, analytical_break_even, poodle_min_switch_time,
 )
 
 SCENARIOS_PATH     = ROOT / "scenarios.json"
@@ -161,6 +162,81 @@ def _load_measured_results() -> list[dict]:
     return rows
 
 
+# ── Switch-time estimates ──────────────────────────────────────────────────
+
+def _switch_time_llm(qs: dict):
+    """Estimate how long it takes the LLM alone to process all expected requests.
+
+    Formula: total_requests / llm_throughput_items_per_second
+    Returns seconds, or None if the required data is unavailable.
+    """
+    large_model = qs.get("large_model", "")
+    use_case    = qs.get("use_case",    "")
+    if not large_model or use_case in ("", "none"):
+        return None
+
+    rows = _load_measured_results()
+    llm_row = next(
+        (r for r in rows if r["model"] == large_model and r["use_case"] == use_case),
+        None,
+    )
+    if llm_row is None:
+        return None
+    throughput = llm_row.get("items-per-second")
+    if not throughput:
+        return None
+
+    try:
+        total_requests = int(qs.get("total_requests", 0))
+    except (ValueError, TypeError):
+        total_requests = 0
+    if not total_requests:
+        return None
+
+    return total_requests / throughput  # seconds
+
+
+def _switch_time_poodle(qs: dict):
+    """Estimate the minimum time before Poodle can switch to the small model.
+
+    Returns seconds, or None to show ??? in the UI.
+    """
+    large_model  = qs.get("large_model",  "")
+    small_model  = qs.get("small_model",  "")
+    use_case     = qs.get("use_case",     "")
+    dev_approach = qs.get("dev_approach", "")
+    if not large_model or not small_model or use_case in ("", "none") or not dev_approach:
+        return None
+
+    rows = _load_measured_results()
+    llm_row = next(
+        (r for r in rows if r["model"] == large_model and r["use_case"] == use_case),
+        None,
+    )
+    poodle_row = next(
+        (r for r in rows if r["model"] == small_model
+         and r["use_case"] == use_case and r["dev_approach"] == dev_approach),
+        None,
+    )
+
+    time_for_model_dev     = poodle_row["dev_time"]         if poodle_row else None  # seconds
+    llm_throughput         = llm_row["items-per-second"]    if llm_row    else None  # items/s
+    small_model_throughput = poodle_row["items-per-second"] if poodle_row else None  # items/s
+    try:
+        total_requests = int(qs.get("total_requests", 0))
+        switch_req     = int(qs.get("switch_after_n_items", 0))
+    except (ValueError, TypeError):
+        total_requests = switch_req = 0
+
+    return poodle_min_switch_time(
+        time_for_model_dev=time_for_model_dev,
+        llm_throughput=llm_throughput,
+        small_model_throughput=small_model_throughput,
+        total_requests=total_requests,
+        switch_req=switch_req,
+    )
+
+
 # ── HTTP handler ───────────────────────────────────────────────────────────
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -172,6 +248,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
     # ── GET ────────────────────────────────────────────────────────────
 
     def do_GET(self):
+        parsed = urlparse(self.path)
+        qs = {k: v[0] for k, v in parse_qs(parsed.query).items()}
         if self.path in ("/", "/index.html"):
             self._serve_file(ROOT / "index.html", "text/html; charset=utf-8")
         elif self.path == "/api/example":
@@ -218,12 +296,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
             mm_path = ROOT / "models.json"
             data = json.loads(mm_path.read_text()) if mm_path.exists() else {}
             self._send(200, "application/json", json.dumps(data).encode())
-        elif self.path == "/api/switch-time-llm":
-            # TODO: implement — return null to show ??? in UI
-            self._send(200, "application/json", json.dumps({"value": None}).encode())
-        elif self.path == "/api/switch-time-poodle":
-            # TODO: implement — return null to show ??? in UI
-            self._send(200, "application/json", json.dumps({"value": None}).encode())
+        elif parsed.path == "/api/switch-time-llm":
+            self._send(200, "application/json",
+                       json.dumps({"value": _switch_time_llm(qs)}).encode())
+        elif parsed.path == "/api/switch-time-poodle":
+            self._send(200, "application/json",
+                       json.dumps({"value": _switch_time_poodle(qs)}).encode())
         else:
             self._send(404, "text/plain", b"Not found")
 
