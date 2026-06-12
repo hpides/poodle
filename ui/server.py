@@ -218,6 +218,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
             mm_path = ROOT / "models.json"
             data = json.loads(mm_path.read_text()) if mm_path.exists() else {}
             self._send(200, "application/json", json.dumps(data).encode())
+        elif self.path == "/api/switch-time-llm":
+            # TODO: implement — return null to show ??? in UI
+            self._send(200, "application/json", json.dumps({"value": None}).encode())
+        elif self.path == "/api/switch-time-poodle":
+            # TODO: implement — return null to show ??? in UI
+            self._send(200, "application/json", json.dumps({"value": None}).encode())
         else:
             self._send(404, "text/plain", b"Not found")
 
