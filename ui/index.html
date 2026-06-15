@@ -716,15 +716,14 @@
           <div class="section-body">
             <div class="field">
               <label>
-                Model Dev Costs ($)
-                <span class="value-badge" id="model_dev_costs_badge">$4.00</span>
+                <span>Model Dev Costs ($) <span class="num-source-icon" id="dev-cost-icon"></span></span><span class="value-badge" id="model_dev_costs_badge">$4.00</span>
               </label>
               <div class="slider-row">
                 <input type="range" id="model_dev_costs_slider"
                   min="0" max="50" step="0.1" value="4.0"
-                  oninput="syncSliderFloat('model_dev_costs', this.value)" />
+                  oninput="document.getElementById('dev-cost-icon').textContent=''; syncSliderFloat('model_dev_costs', this.value)" />
                 <input type="number" id="model_dev_costs" min="0" step="0.5" value="4.0"
-                  oninput="syncNumFloat('model_dev_costs', this.value)" />
+                  oninput="document.getElementById('dev-cost-icon').textContent=''; syncNumFloat('model_dev_costs', this.value)" />
               </div>
             </div>
           </div>
@@ -1027,6 +1026,7 @@ function updateDevCost() {
   );
 
   const devTimeSec = poodleRow?.dev_time;
+  const iconEl = document.getElementById('dev-cost-icon');
   if (devTimeSec !== null && devTimeSec !== undefined && devTimeSec >= 0) {
     const devCost  = parseFloat(((devTimeSec / 3600) * 1.2).toFixed(4));
     const numEl    = document.getElementById('model_dev_costs');
@@ -1035,6 +1035,9 @@ function updateDevCost() {
     if (numEl)    numEl.value    = devCost;
     if (sliderEl) sliderEl.value = devCost;
     if (badgeEl)  badgeEl.textContent = '$' + devCost.toFixed(2);
+    if (iconEl)   iconEl.textContent  = '🧮';
+  } else {
+    if (iconEl) iconEl.textContent = '';
   }
 }
 
