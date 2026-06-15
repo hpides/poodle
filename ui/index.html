@@ -177,11 +177,9 @@
     }
     .cmp-table td.row-hdr {
       text-align: left;
-      font-weight: 400;
-      font-size: 0.7rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
+      font-weight: 700;
+      font-size: 1.2rem;
+      font-variant-numeric: tabular-nums;
     }
     .cmp-table .col-llm   { color: var(--accent); }
     .cmp-table .col-poodle { color: var(--green); }
@@ -533,20 +531,23 @@
         <thead>
           <tr>
             <th class="row-hdr"></th>
-            <th class="col-llm">LLM <span class="num-source-icon" id="th-llm-icon"></span></th>
-            <th class="col-poodle">Poodle <span class="num-source-icon">⏱️</span></th>
+            <th>Accuracy <span class="num-source-icon">⏱️</span></th>
+            <th>Items / s <span class="num-source-icon">⏱️</span></th>
+            <th>Min time <span class="num-source-icon">🧮</span></th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td class="row-hdr">Accuracy</td>
-            <td class="col-llm"   id="stat-llm-accuracy">—</td>
-            <td class="col-poodle" id="stat-poodle-accuracy">—</td>
+            <td class="row-hdr col-llm">LLM</td>
+            <td class="col-llm" id="stat-llm-accuracy">—</td>
+            <td class="col-llm" id="stat-ips-llm">—</td>
+            <td class="col-llm" id="stat-mintime-llm">???</td>
           </tr>
           <tr>
-            <td class="row-hdr">Items / s</td>
-            <td class="col-llm"   id="stat-ips-llm">—</td>
+            <td class="row-hdr col-poodle">Poodle</td>
+            <td class="col-poodle" id="stat-poodle-accuracy">—</td>
             <td class="col-poodle" id="stat-ips-poodle">—</td>
+            <td class="col-poodle" id="stat-mintime-poodle">—</td>
           </tr>
         </tbody>
       </table>
@@ -704,7 +705,7 @@
           <div class="section-header">
             <div class="icon">🔧</div>
             <h2>Model Development</h2>
-            <select id="dev_approach" style="margin-left:8px; padding:3px 7px; font-size:0.78rem; width:82px;" onchange="updateDevCost(); update()">
+            <select id="dev_approach" style="margin-left:8px; padding:3px 7px; font-size:0.78rem; width:82px;" onchange="enforceMinSwitchReq(); updateDevCost(); update()">
               <option value="base">base</option>
               <option value="s-naive">s-naive</option>
               <option value="s-500">s-500</option>
@@ -967,7 +968,8 @@ function updateAccuracy() {
   const smallModel  = document.getElementById('small_model')?.value  ?? '';
   if (largeModel === 'none' || smallModel === 'none') {
     ['stat-llm-accuracy','stat-poodle-accuracy',
-     'stat-ips-llm','stat-ips-poodle','stat-earliest-switch'].forEach(id => {
+     'stat-ips-llm','stat-ips-poodle','stat-earliest-switch',
+     'stat-mintime-llm','stat-mintime-poodle'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.textContent = '—';
     });
@@ -993,11 +995,22 @@ function updateAccuracy() {
   document.getElementById('stat-poodle-accuracy').textContent = poodleRow ? fmt(poodleRow.accuracy)            : '???';
   document.getElementById('stat-ips-llm').textContent         = llmRow    ? fmtIps(llmRow['items-per-second']) : '???';
   document.getElementById('stat-ips-poodle').textContent      = poodleRow ? fmtIps(poodleRow['items-per-second']) : '???';
-  document.getElementById('th-llm-icon').textContent = llmRow ? '⏱️' : '';
+  const fmtTime = v => {
+    if (v === null || v === undefined || v < 0) return '???';
+    const mins = v / 60;
+    return mins >= 60 ? (mins / 60).toFixed(1) + ' h' : mins.toFixed(1) + ' min';
+  };
+  const totalRequests  = parseInt(document.getElementById('expected_requests')?.value)    || 0;
+  const switchAfterN   = parseInt(document.getElementById('switch_after_n_items')?.value) || 0;
+  const params = new URLSearchParams({ large_model: largeModel, small_model: smallModel, use_case: useCase, dev_approach: devApproach, total_requests: totalRequests, switch_after_n_items: switchAfterN });
+  document.getElementById('stat-mintime-llm').textContent    = '???';
+  document.getElementById('stat-mintime-poodle').textContent = '???';
+  fetch('/api/switch-time-llm?'    + params).then(r => r.json()).then(d => { switchTimeLLM    = d.value; document.getElementById('stat-mintime-llm').textContent    = fmtTime(d.value); });
+  fetch('/api/switch-time-poodle?' + params).then(r => r.json()).then(d => { switchTimePoodle = d.value; document.getElementById('stat-mintime-poodle').textContent = fmtTime(d.value); });
 
   const devTimeSec = poodleRow?.dev_time;
   const hasSwitch = devTimeSec !== null && devTimeSec !== undefined && devTimeSec >= 0;
-  document.getElementById('stat-earliest-switch').textContent = hasSwitch ? (devTimeSec / 60).toFixed(1) + ' min' : '???';
+  document.getElementById('stat-earliest-switch').textContent = hasSwitch ? fmtTime(devTimeSec) : '???';
   document.getElementById('stat-earliest-switch-label').innerHTML = hasSwitch ? 'Earliest switch <span class="num-source-icon">⏱️</span>' : 'Earliest switch';
 
 }
@@ -1171,6 +1184,17 @@ function fetchCostSeries(cfg) {
 // ═══════════════════════════════════════════════════════════════════════════
 // Form sync helpers
 // ═══════════════════════════════════════════════════════════════════════════
+
+function enforceMinSwitchReq() {
+  const approach = document.getElementById('dev_approach')?.value ?? '';
+  const minVal   = approach === 's-500' ? 500 : 5000;
+  const current  = parseInt(document.getElementById('switch_after_n_items')?.value) || 0;
+  if (current < minVal) {
+    document.getElementById('switch_after_n_items').value        = minVal;
+    document.getElementById('switch_after_n_items_slider').value = minVal;
+    updateBadge('switch_after_n_items', minVal.toLocaleString());
+  }
+}
 
 function syncSlider(id, val) {
   document.getElementById(id).value = val;
@@ -1635,6 +1659,8 @@ const DEV_CARDS = [
 
 let modelMapping = {};
 let modelNaming = 'model-x';
+let switchTimeLLM    = null;  // seconds, from /api/switch-time-llm
+let switchTimePoodle = null;  // seconds, from /api/switch-time-poodle
 
 function modelDisplayName(id) {
   if (modelNaming === 'model-x') return id;
@@ -2251,7 +2277,7 @@ function showView(name) {
 
 // ── Init — load models + use-cases first, then scenarios (so selects are populated)
 loadCardData().then(() => buildModelDevPage());
-Promise.all([loadModelData(), loadUseCases(), loadMeasuredResults()]).then(() => loadScenarioList());
+Promise.all([loadModelData(), loadUseCases(), loadMeasuredResults()]).then(() => loadScenarioList().then(() => updateAccuracy()));
 </script>
 </body>
 </html>

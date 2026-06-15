@@ -164,6 +164,30 @@ def compare_single_model_and_poodle(config: DemoScenario):
 
     return base_prices, poodle_prices, poodle_savings
 
+def poodle_min_switch_time(
+    time_for_model_dev,      # seconds — time to develop/validate the small model
+    llm_throughput,          # items/s — throughput of the large LLM
+    small_model_throughput,  # items/s — throughput of the small model after switch
+    total_requests,          # int     — total expected requests in the scenario
+    switch_req,              # int     — number of requests at which Poodle switches
+):
+    """Estimate the earliest time (seconds) at which Poodle can switch to the small model.
+    if we get numbers here, we know we have valid numbers/measurements.
+
+    Returns seconds, or None if inputs are insufficient.
+    """
+
+    # as long as we develop the surrogate model -> handle requests using the LLM
+    # also as long as the user prevents the switch -> handle requests using the LLM
+    items_processed_by_llm = max((time_for_model_dev * llm_throughput), switch_req)
+    # the remaining requests are handled by the surrogate model
+    items_processed_by_surrogate = total_requests - items_processed_by_llm
+
+    llm_time = items_processed_by_llm/llm_throughput
+    surrogate_time = items_processed_by_surrogate/small_model_throughput
+
+    return llm_time + surrogate_time
+
 if __name__ == '__main__':
     example_scenario = DemoScenario.get_example_scenario()
     base_prices, poodle_prices, poodle_savings = compare_single_model_and_poodle(example_scenario)
