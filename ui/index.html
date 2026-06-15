@@ -705,7 +705,7 @@
           <div class="section-header">
             <div class="icon">🔧</div>
             <h2>Model Development</h2>
-            <select id="dev_approach" style="margin-left:8px; padding:3px 7px; font-size:0.78rem; width:82px;" onchange="updateDevCost(); update()">
+            <select id="dev_approach" style="margin-left:8px; padding:3px 7px; font-size:0.78rem; width:82px;" onchange="enforceMinSwitchReq(); updateDevCost(); update()">
               <option value="base">base</option>
               <option value="s-naive">s-naive</option>
               <option value="s-500">s-500</option>
@@ -1184,6 +1184,17 @@ function fetchCostSeries(cfg) {
 // ═══════════════════════════════════════════════════════════════════════════
 // Form sync helpers
 // ═══════════════════════════════════════════════════════════════════════════
+
+function enforceMinSwitchReq() {
+  const approach = document.getElementById('dev_approach')?.value ?? '';
+  const minVal   = approach === 's-500' ? 500 : 5000;
+  const current  = parseInt(document.getElementById('switch_after_n_items')?.value) || 0;
+  if (current < minVal) {
+    document.getElementById('switch_after_n_items').value        = minVal;
+    document.getElementById('switch_after_n_items_slider').value = minVal;
+    updateBadge('switch_after_n_items', minVal.toLocaleString());
+  }
+}
 
 function syncSlider(id, val) {
   document.getElementById(id).value = val;
