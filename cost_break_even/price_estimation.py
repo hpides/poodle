@@ -8,8 +8,14 @@ LLAMA_70B_TURBO = "Llama-70B-turbo"
 LLAMA_8B = "Llama-8B"
 BERT_80M = "bert-80M"
 GPT_4_1 = "gpt-4.1"
-GPT_4_1_MINI = "gpt-4.1_mini"
-GPT_4_1_NANO = "gpt-4.1_nano"
+GPT_4_1_MINI = "gpt-4.1-mini"
+GPT_4_1_NANO = "gpt-4.1-nano"
+GPT_5_5 = "gpt-5.5"
+GPT_5_4_MINI = "gpt-5.4-mini"
+GPT_5_4_NANO = "gpt-5.4-nano"
+GEMINI_2_5_FLASH = "gemini-2.5-flash"
+GEMINI_2_5_FLASH_LITE = "gemini-2.5-flash-lite"
+GEMINI_3_FLASH_PREV = "gemini-3-flash-preview"
 
 INPUT_TOKENS = "input_tokens"
 OUTPUT_TOKENS = "output_tokens"
@@ -19,19 +25,32 @@ MODEL_ID = "model_id"
 MODEL_PRICING_PER_1M = {  # prices in $/1M tokens
     # https://api.together.ai/models/togethercomputer/m2-bert-80M-32k-retrieval
     BERT_80M: {INPUT: 0.01, OUTPUT: 0.01},
-    # Ref
-    LLAMA_8B: {INPUT: 0.20, OUTPUT: 0.02},
+    # https://api.together.ai/models/meta-llama/Llama-3-8b
+    LLAMA_8B: {INPUT: 0.20, OUTPUT: 0.20},
     # https://api.together.ai/models/meta-llama/Llama-3.3-70B-Instruct-Turbo
     LLAMA_70B_TURBO: {INPUT: 0.88, OUTPUT: 0.88},
     # https://api.together.ai/models/meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo
     LLAMA_405B_TURBO: {INPUT: 3.50, OUTPUT: 3.50},
     # https://platform.openai.com/docs/pricing
-    # - gpt 4.1: 2.00\$ (input), 8.00\$ (output), batch prices half
-    GPT_4_1: {INPUT: 2, OUTPUT: 8},
-    # - gpt 4.1-mini: 0.40\$ (input), 1.60\$ (output), batch prices half
-    GPT_4_1_MINI: {INPUT: 0.4, OUTPUT: 1.6},
-    # - gpt 4.1-nano: 0.10\$ (input), 0.40\$ (output), batch prices half
-    GPT_4_1_NANO: {INPUT: 0.1, OUTPUT: 0.4},
+    # - gpt 4.1: 2.00$ (input), 8.00$ (output), batch prices half
+    GPT_4_1: {INPUT: 2.00, OUTPUT: 8.00},
+    # - gpt 4.1-mini: 0.40$ (input), 1.60$ (output), batch prices half
+    GPT_4_1_MINI: {INPUT: 0.40, OUTPUT: 1.60},
+    # - gpt 4.1-nano: 0.10$ (input), 0.40$ (output), batch prices half
+    GPT_4_1_NANO: {INPUT: 0.10, OUTPUT: 0.40},
+    # - gpt 5.5: 5.00$ (input), 30.00$ (output)
+    GPT_5_5: {INPUT: 5.00, OUTPUT: 30.00},
+    # - gpt 5.4-mini: 0.75$ (input), 4.50$ (output)
+    GPT_5_4_MINI: {INPUT: 0.75, OUTPUT: 4.50},
+    # - gpt 5.4-nano: 0.20$ (input), 1.25$ (output)
+    GPT_5_4_NANO: {INPUT: 0.20, OUTPUT: 1.25},
+    # https://cloud.google.com/vertex-ai/generative-ai/docs/pricing
+    # - gemini 2.5 flash: 0.30$ (input), 2.50$ (output)
+    GEMINI_2_5_FLASH: {INPUT: 0.30, OUTPUT: 2.50},
+    # - gemini 2.5 flash lite: 0.10$ (input), 0.40$ (output)
+    GEMINI_2_5_FLASH_LITE: {INPUT: 0.10, OUTPUT: 0.40},
+    # - gemini 3 flash preview: 0.50$ (input), 3.00$ (output)
+    GEMINI_3_FLASH_PREV: {INPUT: 0.50, OUTPUT: 3.00},
 }
 
 
@@ -156,24 +175,26 @@ if __name__ == '__main__':
     #         price = base_price_estimation(input_tokens, output_tokens, num_requests, model_id)
     #     print(f"{model_id}: {price:.2f}$")
 
-    # for large_model, small_model in [(GPT_4_1_NANO, BERT_80M), (GPT_4_1_MINI, BERT_80M), (GPT_4_1, BERT_80M), (LLAMA_8B, BERT_80M), (LLAMA_70B_TURBO, BERT_80M), (LLAMA_405B_TURBO, BERT_80M)]:
-    # # for large_model, small_model in [(GPT_4_1, BERT_80M)]:
-    #     large_config = {INPUT_TOKENS: input_tokens, OUTPUT_TOKENS: output_tokens, MODEL_ID: large_model}
-    #     small_config = {INPUT_TOKENS: wrapped_input_tokens, OUTPUT_TOKENS: wrapped_output_tokens, MODEL_ID: small_model}
-    #
-    #     print()
-    #     print(f"{small_model} vs. {large_model}")
-    #     base_price = base_price_estimation(input_tokens, output_tokens, num_requests, large_model)
-    #     combined_price = combined_price_estimation(large_config, small_config, num_requests, switch_after_n_items)
-    #     print(f"base: {base_price:.2f}$")
-    #     print(f"combined: {combined_price:.2f}$")
-    #     print(f"difference: {base_price - combined_price:.2f}$")
-    #     print(f"factor: {base_price / combined_price:.2f}x")
+    for large_model, small_model in [(GPT_4_1_NANO, BERT_80M), (GPT_4_1_MINI, BERT_80M), (GPT_4_1, BERT_80M), (LLAMA_8B, BERT_80M), (LLAMA_70B_TURBO, BERT_80M), (LLAMA_405B_TURBO, BERT_80M), (GEMINI_2_5_FLASH, BERT_80M), (GPT_4_1_MINI, BERT_80M), (GPT_5_5, BERT_80M)]:
+        large_config = {INPUT_TOKENS: input_tokens, OUTPUT_TOKENS: output_tokens, MODEL_ID: large_model}
+        small_config = {INPUT_TOKENS: wrapped_input_tokens, OUTPUT_TOKENS: wrapped_output_tokens, MODEL_ID: small_model}
+
+        print()
+        print(f"{small_model} vs. {large_model}")
+        base_price = base_price_estimation(input_tokens, output_tokens, num_requests, large_model)
+        combined_price = combined_price_estimation(large_config, small_config, num_requests, switch_after_n_items)
+        print(f"base: {base_price:.2f}$")
+        print(f"combined: {combined_price:.2f}$")
+        print(f"difference: {base_price - combined_price:.2f}$")
+        print(f"factor: {base_price / combined_price:.2f}x")
 
     request_range_model_pairs = [
         (GPT_4_1_NANO, [5000, 10000, 20000, 40000, 80000, 160000]),
         (GPT_4_1, [1000, 2000, 4000, 8000, 16000]),
         (LLAMA_405B_TURBO, [1000, 2000, 4000, 8000, 16000]),
+        (GEMINI_2_5_FLASH, [5000, 10000, 20000, 40000, 80000]),
+        (GPT_5_4_MINI, [1000, 2000, 4000, 8000, 16000, 32000]),
+        (GPT_5_5, [1000, 2000, 4000, 8000, 16000]),
     ]
     for model, requests in request_range_model_pairs:
         plot_price_savings(requests, model, BERT_80M)
