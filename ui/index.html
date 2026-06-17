@@ -377,9 +377,10 @@
       border: 1px solid var(--border);
       border-radius: 6px;
       padding: 7px 10px;
-      font-size: 0.75rem;
+      font-size: 0.85rem;
       color: var(--text);
-      white-space: nowrap;
+      white-space: normal;
+      width: 20cm;
       box-shadow: 0 4px 12px rgba(0,0,0,0.4);
       z-index: 100;
       pointer-events: none;
@@ -498,7 +499,10 @@
   <div class="chart-stats" style="display:flex; flex-direction:column; gap:8px; justify-content:center;">
 
     <!-- 1 · Value proposition -->
-    <div class="stat-section-label">Value</div>
+    <div style="display:flex; align-items:center; gap:6px; position:relative;">
+      <div class="stat-section-label">Value</div>
+      <span class="info-icon">i<span class="info-tooltip" style="bottom:auto; top:calc(100% + 6px);"><b>Savings</b> = LLM-only cost − Poodle cost at the configured total request count.<br><br><b>Poodle cost</b> =<br> cost of first N requests through the large model<br>+ surrogate model development cost<br>+ cost of remaining requests through surrogate model<br>+ validation monitoring (β × small-model requests routed back to large model).<br><br><b>Savings %</b> = (Savings / LLM-only cost) × 100.</span></span>
+    </div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
       <div class="stat-card">
         <div class="stat-label">Savings <span class="num-source-icon">🧮</span></div>
@@ -510,9 +514,11 @@
       </div>
     </div>
 
-    <!-- 2 · Quality trade-off -->
     <!-- 2 · Timeline -->
-    <div class="stat-section-label">Timeline</div>
+    <div style="display:flex; align-items:center; gap:6px; position:relative;">
+      <div class="stat-section-label">Timeline</div>
+      <span class="info-icon">i<span class="info-tooltip" style="bottom:auto; top:calc(100% + 6px);"><b>Break-even</b> solved analytically<br><b>Earliest switch</b> measured development time for the surrogate model and development approach.</span></span>
+    </div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
       <div class="stat-card">
         <div class="stat-label">Break-even <span class="num-source-icon">🧮</span></div>
@@ -525,7 +531,10 @@
     </div>
 
     <!-- 3 · Trade-off -->
-    <div class="stat-section-label">Trade-off</div>
+    <div style="display:flex; align-items:center; gap:6px; position:relative;">
+      <div class="stat-section-label">Trade-off</div>
+      <span class="info-icon">i<span class="info-tooltip"><b>Accuracy</b>: measured benchmark value for the selected model and use case.<br><br><b>Items / s</b>: measured throughput on an NVIDIA RTX A5000.<br><br><b>TTL. (LLM)</b> = total_requests / LLM throughput<br><br><b>TTL. (Poodle)</b>:<br>items_by_llm = max(dev_time × LLM throughput, switch_threshold)<br>items_by_surrogate = total_requests − items_by_llm<br>TTL. = items_by_llm / LLM throughput + items_by_surrogate / small-model throughput</span></span>
+    </div>
     <div class="stat-card" style="padding:8px 10px;">
       <table class="cmp-table">
         <thead>
@@ -565,7 +574,7 @@
 
       <!-- Model Prices: all columns except the last -->
       <div class="section" style="grid-column: 1 / -2; display:flex; flex-direction:column; align-self:start; position:relative;">
-        <span class="info-icon" style="position:absolute; top:10px; right:10px;">i<span class="info-tooltip">Pricing per 1M tokens for each available model. Custom models can be added below.</span></span>
+        <span class="info-icon" style="position:absolute; top:10px; right:10px;">i<span class="info-tooltip" style="bottom:auto; top:calc(100% + 6px);"><b>Model prices</b>: sourced from provider pricing pages (Together AI, OpenAI) in $/1M tokens.<br><br><b>Cost per request</b> = (input_tokens × input_price + output_tokens × output_price) / 1,000,000<br><br>Token counts are estimated from the sample texts in the Use Case panel.<br><br>Custom models can be added with manually entered prices.</span></span>
         <div class="section-header">
           <div class="icon">💰</div>
           <h2>Model Prices <span class="num-source-icon" style="font-size:1.4em;">🗂️</span></h2>
@@ -603,7 +612,7 @@
 
         <!-- Models -->
         <div class="section" style="position:relative;">
-          <span class="info-icon" style="position:absolute; top:10px; right:10px;">i<span class="info-tooltip">Large model is the baseline; small model is the fine-tuned replacement used after the switch.</span></span>
+          <span class="info-icon" style="position:absolute; top:10px; right:10px;">i<span class="info-tooltip" style="bottom:auto; top:calc(100% + 6px);"><b>Large model</b>: the baseline LLM that handles all requests until the switch threshold N is reached.<br><br><b>Small model</b>: the surrogate model that takes over after N requests.<br><br>All cost, accuracy, and throughput calculations are driven by the selected pair and their benchmark measurements.</span></span>
           <div class="section-header">
             <div class="icon">🤖</div>
             <h2>Models</h2>
@@ -624,7 +633,7 @@
 
         <!-- Requests -->
         <div class="section" style="position:relative;">
-          <span class="info-icon" style="position:absolute; top:10px; right:10px;">i<span class="info-tooltip">Total expected requests and the point at which traffic switches from large to small model.</span></span>
+          <span class="info-icon" style="position:absolute; top:10px; right:10px;">i<span class="info-tooltip"><b>Total requests</b>: expected request volume used to project total cost and savings.<br><br><b>Switch threshold (N)</b>: the number of requests after which Poodle stops using the large model and routes traffic to the small model.<br><br>Together they determine break-even, TTL., and the cost curves.</span></span>
           <div class="section-header">
             <div class="icon">📊</div>
             <h2>Requests</h2>
@@ -668,7 +677,7 @@
 
       <!-- Use Case: all columns except the last, height driven by right column -->
       <div class="section" style="grid-column: 1 / -2; min-height:0; display:flex; flex-direction:column; position:relative;">
-        <span class="info-icon" style="position:absolute; top:10px; right:10px;">i<span class="info-tooltip">Sample texts used for token counting. Select a preset use case or enter custom examples.</span></span>
+        <span class="info-icon" style="position:absolute; top:10px; right:10px;">i<span class="info-tooltip"><b>Sample texts</b>: prompt, input, and output examples used to estimate token counts via a character-based heuristic.<br><br><b>Token counts</b> feed directly into the per-request cost formula:<br>cost = (input_tokens × input_price + output_tokens × output_price) / 1,000,000<br><br>Selecting a preset use case fills these with representative examples.</span></span>
         <div class="section-header">
           <div class="icon">✏️</div>
           <h2>Use Case</h2>
@@ -731,7 +740,7 @@
 
         <!-- Validation -->
         <div class="section" style="position:relative;">
-          <span class="info-icon" style="position:absolute; top:10px; right:10px;">i<span class="info-tooltip">Fraction of requests used for validation (0.0 – 1.0)</span></span>
+          <span class="info-icon" style="position:absolute; top:10px; right:10px;">i<span class="info-tooltip"><b>Validation fraction β</b> (0.0–1.0): share of small-model requests periodically re-routed to the large model to detect data drift.<br><br>These monitoring requests are billed at the large model's non-wrapped rate.<br><br><b>Monitoring cost</b> = β × small-model requests × large-model cost/req</span></span>
           <div class="section-header">
             <div class="icon">✅</div>
             <h2>Validation</h2>
@@ -760,7 +769,7 @@
 
     <!-- Task Detection -->
     <div class="section wide" style="position:relative; grid-column: 1 / -2;">
-      <span class="info-icon" style="position:absolute; top:10px; right:10px;">i<span class="info-tooltip">Configures how Poodle detects the task type. Wrapper Prompt adds an extra LLM call; User Provided skips it entirely.</span></span>
+      <span class="info-icon" style="position:absolute; top:10px; right:10px;">i<span class="info-tooltip"><b>Wrapper Prompt</b>: an extended prompt call is made to classify each request.<br><br></span></span>
       <div class="section-header">
         <div class="icon">🔀</div>
         <h2>Task Detection</h2>
