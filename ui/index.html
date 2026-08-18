@@ -4,6 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Poodle Demo Config</title>
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem('poodle-theme') === 'light') {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      } catch (e) { /* localStorage unavailable — fall back to dark default */ }
+    })();
+  </script>
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -49,6 +58,35 @@
       --red: #f87171;
       --radius: 10px;
       --font: 'Inter', system-ui, sans-serif;
+      --row-overlay: 255,255,255;
+      --accent-rgb: 108,142,245;
+      --col-num-color: #a5b4fc;
+      --btn-add-hover: #8ba8ff;
+      --del-hover-tint: rgba(248,113,113,0.1);
+      --badge-openai-bg: rgba(16,163,127,.18);   --badge-openai-fg: #34d399;
+      --badge-together-bg: rgba(139,92,246,.18); --badge-together-fg: #c4b5fd;
+      --badge-custom-bg: rgba(251,191,36,.18);   --badge-custom-fg: #fbbf24;
+    }
+
+    :root[data-theme="light"] {
+      --bg: #f5f6fa;
+      --surface: #ffffff;
+      --surface2: #eef0f7;
+      --border: #d8dbe8;
+      --accent: #3d5fd0;
+      --accent-dim: #c3cdf2;
+      --text: #1c1f2b;
+      --text-muted: #5c6280;
+      --green: #15803d;
+      --red: #c0362c;
+      --row-overlay: 0,0,0;
+      --accent-rgb: 61,95,208;
+      --col-num-color: #3f4fb0;
+      --btn-add-hover: #5678e0;
+      --del-hover-tint: rgba(192,54,44,0.1);
+      --badge-openai-bg: rgba(16,163,127,.14);   --badge-openai-fg: #0d7d63;
+      --badge-together-bg: rgba(139,92,246,.14); --badge-together-fg: #6d43d6;
+      --badge-custom-bg: rgba(251,191,36,.20);   --badge-custom-fg: #92620a;
     }
 
     body {
@@ -287,7 +325,7 @@
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none; width: 14px; height: 14px;
       border-radius: 50%; background: var(--accent); cursor: pointer;
-      box-shadow: 0 0 0 3px rgba(108,142,245,0.2);
+      box-shadow: 0 0 0 3px rgba(var(--accent-rgb),0.2);
     }
 
     .slider-row { display: flex; align-items: center; gap: 9px; }
@@ -302,7 +340,7 @@
     }
     .radio-option:hover { border-color: var(--accent-dim); }
     .radio-option input[type="radio"] { accent-color: var(--accent); cursor: pointer; }
-    .radio-option.selected { border-color: var(--accent); background: rgba(108,142,245,0.08); }
+    .radio-option.selected { border-color: var(--accent); background: rgba(var(--accent-rgb),0.08); }
     .radio-option label { cursor: pointer; font-size: 0.82rem; color: var(--text); margin: 0; white-space: nowrap; }
 
     .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
@@ -315,7 +353,7 @@
       font-size: 0.82rem;
       margin-top: 14px;
     }
-    .model-table thead tr { background: rgba(255,255,255,0.04); }
+    .model-table thead tr { background: rgba(var(--row-overlay),0.04); }
     .model-table th {
       padding: 7px 12px;
       text-align: left;
@@ -329,15 +367,15 @@
     }
     .model-table td {
       padding: 7px 12px;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
+      border-bottom: 1px solid rgba(var(--row-overlay),0.04);
       color: var(--text);
     }
-    .model-table tbody tr:hover { background: rgba(255,255,255,0.03); }
+    .model-table tbody tr:hover { background: rgba(var(--row-overlay),0.03); }
     .model-table tbody tr:last-child td { border-bottom: none; }
     .model-table .col-num {
       text-align: right;
       font-variant-numeric: tabular-nums;
-      color: #a5b4fc;
+      color: var(--col-num-color);
     }
     .badge-provider {
       display: inline-block;
@@ -346,9 +384,9 @@
       font-size: 0.7rem;
       font-weight: 600;
     }
-    .badge-openai   { background: rgba(16,163,127,0.18); color: #34d399; }
-    .badge-together { background: rgba(139,92,246,0.18);  color: #c4b5fd; }
-    .badge-custom   { background: rgba(251,191,36,0.18);  color: #fbbf24; }
+    .badge-openai   { background: var(--badge-openai-bg);   color: var(--badge-openai-fg); }
+    .badge-together { background: var(--badge-together-bg); color: var(--badge-together-fg); }
+    .badge-custom   { background: var(--badge-custom-bg);   color: var(--badge-custom-fg); }
 
     /* Info tooltip */
     .info-icon {
@@ -417,7 +455,7 @@
       cursor: pointer;
       white-space: nowrap;
     }
-    .btn-add-model:hover { background: #8ba8ff; }
+    .btn-add-model:hover { background: var(--btn-add-hover); }
     .btn-del-model {
       background: none;
       border: none;
@@ -428,7 +466,7 @@
       border-radius: 4px;
       line-height: 1;
     }
-    .btn-del-model:hover { color: #f87171; background: rgba(248,113,113,0.1); }
+    .btn-del-model:hover { color: var(--red); background: var(--del-hover-tint); }
 
     .toast {
       position: fixed; bottom: 20px; right: 20px;
@@ -449,6 +487,9 @@
   <div class="logo">🐩 Poodle</div>
   <div class="subtitle">Just-in-time Model Replacement</div>
   <div class="actions" style="margin-left:auto; display:flex; align-items:center; gap:18px;">
+    <label class="source-toggle" title="Toggle light/dark theme">
+      🌙 <input type="checkbox" id="theme-toggle"> ☀️
+    </label>
     <label class="source-toggle">
       <input type="checkbox" id="sources-toggle" checked onchange="document.body.classList.toggle('hide-sources', !this.checked)">
       show number sources
@@ -873,69 +914,135 @@
 const PLOT_EL      = document.getElementById('cost-chart');
 const SAVINGS_EL   = document.getElementById('savings-chart');
 
-const CHART_FONT = { family: 'Inter, system-ui, sans-serif', color: '#7a85a8', size: 13 };
-
-const PLOT_LAYOUT = {
-  paper_bgcolor: 'transparent',
-  plot_bgcolor:  '#12151e',
-  margin: { t: 28, r: 10, b: 40, l: 60 },
-  font: CHART_FONT,
-  xaxis: {
-    title:    { text: 'Requests', standoff: 6, font: CHART_FONT },
-    tickfont: CHART_FONT,
-    gridcolor:    '#1e2236',
-    linecolor:    '#2e3352',
-    tickcolor:    '#2e3352',
-    tickformat:   '~s',
-    showspikes:   true,
-    spikecolor:   '#3d4f8a',
-    spikethickness: 1,
-    spikedash:    'dot',
+const CHART_PALETTES = {
+  dark: {
+    fontColor:    '#7a85a8',
+    plotBg:       '#12151e',
+    gridColor:    '#1e2236',
+    lineColor:    '#2e3352',
+    tickColor:    '#2e3352',
+    spikeColor:   '#3d4f8a',
+    legendBg:     'rgba(26,29,39,0.8)',
+    legendBorder: '#2e3352',
+    titleColor:   '#c8cee8',
+    hoverBg:      '#1a1d27',
+    hoverBorder:  '#2e3352',
+    hoverFont:    '#e2e6f3',
+    zeroLine:     '#3d4f8a',
+    noDataFont:   '#4a5270',
+    accent:       '#6c8ef5',
   },
-  yaxis: {
-    title:    { text: 'Cost (USD)', standoff: 6, font: CHART_FONT },
-    tickfont: CHART_FONT,
-    gridcolor:  '#1e2236',
-    linecolor:  '#2e3352',
-    tickcolor:  '#2e3352',
-    tickprefix: '$',
-    tickformat: '~s',
-    showspikes:   true,
-    spikecolor:   '#3d4f8a',
-    spikethickness: 1,
-    spikedash:    'dot',
-  },
-  legend: {
-    x: 0.02, y: 0.98,
-    font: CHART_FONT,
-    bgcolor: 'rgba(26,29,39,0.8)',
-    bordercolor: '#2e3352', borderwidth: 1,
-  },
-  title: { text: 'Cost Comparison 🧮', font: { ...CHART_FONT, size: 14, color: '#c8cee8' }, x: 0.5, xanchor: 'center', y: 0.98, yanchor: 'top' },
-  hovermode: 'x unified',
-  hoverlabel: {
-    bgcolor: '#1a1d27', bordercolor: '#2e3352',
-    font: { ...CHART_FONT, color: '#e2e6f3' },
+  light: {
+    fontColor:    '#5c6280',
+    plotBg:       '#ffffff',
+    gridColor:    '#e8eaf2',
+    lineColor:    '#d8dbe8',
+    tickColor:    '#d8dbe8',
+    spikeColor:   '#c3cdf2',
+    legendBg:     'rgba(255,255,255,0.85)',
+    legendBorder: '#d8dbe8',
+    titleColor:   '#1c1f2b',
+    hoverBg:      '#ffffff',
+    hoverBorder:  '#d8dbe8',
+    hoverFont:    '#1c1f2b',
+    zeroLine:     '#c3cdf2',
+    noDataFont:   '#9a9fbb',
+    accent:       '#3d5fd0',
   },
 };
+
+function buildChartLayouts(theme) {
+  const p = CHART_PALETTES[theme] || CHART_PALETTES.dark;
+  const chartFont = { family: 'Inter, system-ui, sans-serif', color: p.fontColor, size: 13 };
+
+  const plotLayout = {
+    paper_bgcolor: 'transparent',
+    plot_bgcolor:  p.plotBg,
+    margin: { t: 28, r: 10, b: 40, l: 60 },
+    font: chartFont,
+    modebar: {
+      bgcolor: 'transparent',
+      color: p.fontColor,
+      activecolor: p.accent,
+    },
+    xaxis: {
+      title:    { text: 'Requests', standoff: 6, font: chartFont },
+      tickfont: chartFont,
+      gridcolor:    p.gridColor,
+      linecolor:    p.lineColor,
+      tickcolor:    p.tickColor,
+      tickformat:   '~s',
+      showspikes:   true,
+      spikecolor:   p.spikeColor,
+      spikethickness: 1,
+      spikedash:    'dot',
+    },
+    yaxis: {
+      title:    { text: 'Cost (USD)', standoff: 6, font: chartFont },
+      tickfont: chartFont,
+      gridcolor:  p.gridColor,
+      linecolor:  p.lineColor,
+      tickcolor:  p.tickColor,
+      tickprefix: '$',
+      tickformat: '~s',
+      showspikes:   true,
+      spikecolor:   p.spikeColor,
+      spikethickness: 1,
+      spikedash:    'dot',
+    },
+    legend: {
+      x: 0.02, y: 0.98,
+      font: chartFont,
+      bgcolor: p.legendBg,
+      bordercolor: p.legendBorder, borderwidth: 1,
+    },
+    title: { text: 'Cost Comparison 🧮', font: { ...chartFont, size: 14, color: p.titleColor }, x: 0.5, xanchor: 'center', y: 0.98, yanchor: 'top' },
+    hovermode: 'x unified',
+    hoverlabel: {
+      bgcolor: p.hoverBg, bordercolor: p.hoverBorder,
+      font: { ...chartFont, color: p.hoverFont },
+    },
+  };
+
+  const savingsLayout = {
+    ...plotLayout,
+    title: { text: 'Cost Savings 🧮', font: { ...chartFont, size: 14, color: p.titleColor }, x: 0.5, xanchor: 'center', y: 0.98, yanchor: 'top' },
+    yaxis: {
+      ...plotLayout.yaxis,
+      title: { text: 'Savings (USD)', standoff: 6, font: chartFont },
+      zeroline: true,
+      zerolinecolor: p.zeroLine,
+      zerolinewidth: 1,
+    },
+  };
+
+  const noDataLayout = {
+    ...plotLayout,
+    annotations: [{
+      text: 'Fill in token fields to see cost estimates',
+      xref: 'paper', yref: 'paper', x: 0.5, y: 0.5,
+      showarrow: false, font: { color: p.noDataFont, size: 13 },
+    }],
+  };
+
+  return { chartFont, plotLayout, savingsLayout, noDataLayout };
+}
+
+let CHART_FONT, PLOT_LAYOUT, SAVINGS_LAYOUT, NO_DATA_LAYOUT;
+function applyChartTheme(theme) {
+  const built = buildChartLayouts(theme);
+  CHART_FONT     = built.chartFont;
+  PLOT_LAYOUT    = built.plotLayout;
+  SAVINGS_LAYOUT = built.savingsLayout;
+  NO_DATA_LAYOUT = built.noDataLayout;
+}
+applyChartTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark');
 
 const PLOT_CONFIG = {
   responsive:    true,
   displaylogo:   false,
   modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d'],
   toImageButtonOptions: { format: 'png', scale: 2 },
-};
-
-const SAVINGS_LAYOUT = {
-  ...PLOT_LAYOUT,
-  title: { text: 'Cost Savings 🧮', font: { ...CHART_FONT, size: 14, color: '#c8cee8' }, x: 0.5, xanchor: 'center', y: 0.98, yanchor: 'top' },
-  yaxis: {
-    ...PLOT_LAYOUT.yaxis,
-    title: { text: 'Savings (USD)', standoff: 6, font: CHART_FONT },
-    zeroline: true,
-    zerolinecolor: '#3d4f8a',
-    zerolinewidth: 1,
-  },
 };
 
 // Initial empty plots
@@ -952,15 +1059,6 @@ function fmtReqs(v) {
   if (v >= 1e3) return (v / 1e3).toFixed(0) + 'K';
   return String(v);
 }
-
-const NO_DATA_LAYOUT = {
-  ...PLOT_LAYOUT,
-  annotations: [{
-    text: 'Fill in token fields to see cost estimates',
-    xref: 'paper', yref: 'paper', x: 0.5, y: 0.5,
-    showarrow: false, font: { color: '#4a5270', size: 13 },
-  }],
-};
 
 // ── Measured-results lookup ─────────────────────────────────────────────────
 
@@ -2286,6 +2384,17 @@ function showView(name) {
     el.style.display = (v === id) ? (v === 'view-main' ? '' : 'flex') : 'none';
   });
 }
+
+// ── Theme toggle ─────────────────────────────────────────────────────────
+const themeToggleEl = document.getElementById('theme-toggle');
+themeToggleEl.checked = document.documentElement.getAttribute('data-theme') === 'light';
+themeToggleEl.addEventListener('change', function () {
+  const theme = this.checked ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', theme);
+  try { localStorage.setItem('poodle-theme', theme); } catch (e) { /* ignore */ }
+  applyChartTheme(theme);
+  updateChart(getConfig());
+});
 
 // ── Init — load models + use-cases first, then scenarios (so selects are populated)
 loadCardData().then(() => buildModelDevPage());
