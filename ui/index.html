@@ -102,6 +102,7 @@
     }
 
     /* ── Number source icons ─────────────────────────────────────────── */
+    .num-source-icon { font-family: var(--font); }
     .hide-sources .num-source-icon { display: none; }
     .source-toggle { display:flex; align-items:center; gap:7px; font-size:0.8rem; color:var(--text-muted); cursor:pointer; user-select:none; }
     .source-toggle input[type=checkbox] { appearance:none; width:30px; height:16px; border-radius:8px; background:var(--surface2); border:1px solid var(--border); cursor:pointer; position:relative; transition:background 0.2s; flex-shrink:0; }
@@ -492,10 +493,10 @@
     <label class="source-toggle" title="Toggle light/dark theme">
       🌙 <input type="checkbox" id="theme-toggle"> ☀️
     </label>
-    <label class="source-toggle">
+    <span class="source-toggle" style="cursor:default;">
       <input type="checkbox" id="sources-toggle" checked onchange="document.body.classList.toggle('hide-sources', !this.checked)">
       show number sources
-    </label>
+    </span>
     <script>
       document.getElementById('sources-toggle').addEventListener('change', function() {
         const show = this.checked;
@@ -507,13 +508,13 @@
         }
       });
     </script>
-    <span class="num-source-icon" style="display:flex; align-items:center; gap:6px; font-size:0.88rem; color:var(--text);">
+    <span class="num-source-icon" style="display:flex; align-items:center; gap:6px; font-size:0.8rem; color:var(--text-muted);">
       <span style="font-size:1.4rem;">🗂️</span> external source
     </span>
-    <span class="num-source-icon" style="display:flex; align-items:center; gap:6px; font-size:0.88rem; color:var(--text);">
+    <span class="num-source-icon" style="display:flex; align-items:center; gap:6px; font-size:0.8rem; color:var(--text-muted);">
       <span style="font-size:1.4rem;">⏱️</span> measured
     </span>
-    <span class="num-source-icon" style="display:flex; align-items:center; gap:6px; font-size:0.88rem; color:var(--text);">
+    <span class="num-source-icon" style="display:flex; align-items:center; gap:6px; font-size:0.8rem; color:var(--text-muted);">
       <span style="font-size:1.4rem;">🧮</span> calculated
     </span>
   </div>
