@@ -45,6 +45,8 @@
       to { transform: rotate(360deg); }
     }
 
+    .model-accuracy:empty { display: none; }
+
     :root {
       --bg: #0f1117;
       --surface: #1a1d27;
@@ -1810,8 +1812,10 @@ function buildCardHTML(card) {
   const items = models.map((m, i) => `
     <li data-index="${i}" data-model-id="${m.name}" style="display:flex; align-items:center; padding:5px 0; border-bottom:1px solid var(--border); list-style:none;">
       <span class="status-dot" data-status="idle"></span>
-      <span class="model-label" style="font-size:1rem;">${modelDisplayName(m.name)}</span>
-      <span class="model-accuracy" style="margin-left:auto; font-size:1rem; color:var(--text-muted);"></span>
+      <div style="display:flex; flex-direction:column; flex:1; min-width:0;">
+        <span class="model-label" style="font-size:1rem;">${modelDisplayName(m.name)}</span>
+        <span class="model-accuracy" style="font-size:0.82rem; color:var(--text-muted);"></span>
+      </div>
     </li>`).join('');
 
   const onclick = card.id === 'proxy-sh' ? `runProxySH()` : `runCard('${card.id}')`;
