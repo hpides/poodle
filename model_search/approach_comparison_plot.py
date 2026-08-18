@@ -43,8 +43,8 @@ def sample_data():
     return [
         {"approach": "Baseline", "label_seconds": 385, "search_seconds": 0, "fine_tune_seconds": 280, "accuracy": 0.89},
         {"approach": "S-naive", "label_seconds": 385, "search_seconds": 2800, "fine_tune_seconds": 0, "accuracy": 0.92},
-        {"approach": "S-500", "label_seconds": 38, "search_seconds": 60, "fine_tune_seconds": 70, "accuracy": 0.91},
         {"approach": "S-5000", "label_seconds": 385, "search_seconds": 60, "fine_tune_seconds": 280, "accuracy": 0.92},
+        {"approach": "S-500", "label_seconds": 38, "search_seconds": 60, "fine_tune_seconds": 70, "accuracy": 0.91},
     ]
 
 
