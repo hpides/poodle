@@ -67,6 +67,8 @@
       --del-hover-tint: rgba(248,113,113,0.1);
       --badge-openai-bg: rgba(16,163,127,.18);   --badge-openai-fg: #34d399;
       --badge-together-bg: rgba(139,92,246,.18); --badge-together-fg: #c4b5fd;
+      --badge-google-bg: rgba(66,133,244,.18);   --badge-google-fg: #60a5fa;
+      --badge-anthropic-bg: rgba(217,119,87,.18);--badge-anthropic-fg: #e0977a;
       --badge-custom-bg: rgba(251,191,36,.18);   --badge-custom-fg: #fbbf24;
     }
 
@@ -88,6 +90,8 @@
       --del-hover-tint: rgba(192,54,44,0.1);
       --badge-openai-bg: rgba(16,163,127,.14);   --badge-openai-fg: #0d7d63;
       --badge-together-bg: rgba(139,92,246,.14); --badge-together-fg: #6d43d6;
+      --badge-google-bg: rgba(66,133,244,.14);   --badge-google-fg: #1a56c4;
+      --badge-anthropic-bg: rgba(217,119,87,.16);--badge-anthropic-fg: #a8502f;
       --badge-custom-bg: rgba(251,191,36,.20);   --badge-custom-fg: #92620a;
     }
 
@@ -387,9 +391,11 @@
       font-size: 0.7rem;
       font-weight: 600;
     }
-    .badge-openai   { background: var(--badge-openai-bg);   color: var(--badge-openai-fg); }
-    .badge-together { background: var(--badge-together-bg); color: var(--badge-together-fg); }
-    .badge-custom   { background: var(--badge-custom-bg);   color: var(--badge-custom-fg); }
+    .badge-openai    { background: var(--badge-openai-bg);    color: var(--badge-openai-fg); }
+    .badge-together  { background: var(--badge-together-bg);  color: var(--badge-together-fg); }
+    .badge-google    { background: var(--badge-google-bg);    color: var(--badge-google-fg); }
+    .badge-anthropic { background: var(--badge-anthropic-bg); color: var(--badge-anthropic-fg); }
+    .badge-custom    { background: var(--badge-custom-bg);    color: var(--badge-custom-fg); }
 
     /* Info tooltip */
     .info-icon {
@@ -1420,6 +1426,8 @@ let MEASURED_RESULTS = [];   // rows from measured-results.csv
 function providerBadge(provider) {
   const cls = provider === 'OpenAI'      ? 'badge-openai'
             : provider === 'Together AI' ? 'badge-together'
+            : provider === 'Google'      ? 'badge-google'
+            : provider === 'Anthropic'   ? 'badge-anthropic'
             :                              'badge-custom';
   return `<span class="badge-provider ${cls}">${provider}</span>`;
 }

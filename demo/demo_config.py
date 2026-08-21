@@ -5,11 +5,20 @@ from enum import Enum
 class Model(Enum):
     BERT_80M = "bert-80M"
     LLAMA_8B = "Llama-8B"
-    LLAMA_70B_TURBO = "Llama-70B-turbo"
-    LLAMA_405B_TURBO = "Llama-405B-turbo"
+    GEMINI_2_5_FLASH_LITE = "gemini-2.5-flash-lite"
+    GEMINI_2_5_FLASH = "gemini-2.5-flash"
+    GEMINI_2_5_PRO = "gemini-2.5-pro"
+    GEMINI_3_FLASH_PREVIEW = "gemini-3-flash-preview"
+    CLAUDE_HAIKU_4_5 = "claude-haiku-4-5"
+    CLAUDE_SONNET_5 = "claude-sonnet-5"
+    CLAUDE_OPUS_5 = "claude-opus-5"
     GPT_4_1 = "gpt-4.1"
     GPT_4_1_MINI = "gpt-4.1_mini"
     GPT_4_1_NANO = "gpt-4.1_nano"
+    GPT_5_5 = "gpt-5.5"
+    GPT_5_4_MINI = "gpt-5.4_mini"
+    LLAMA_70B_TURBO = "Llama-70B-turbo"
+    LLAMA_405B_TURBO = "Llama-405B-turbo"
 
 
 class TaskDetectionMethod(Enum):
