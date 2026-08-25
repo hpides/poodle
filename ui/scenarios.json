@@ -1,8 +1,59 @@
 {
-  "screenshot": {
-    "plot_x_max": 390000,
-    "plot_y_max": 45,
-    "plot_savings_y_min": -7,
+  "GPT-5.5 vs BERT - 50,000": {
+    "models": {
+      "large_model": "gpt-5.5",
+      "small_model": "bert-80M"
+    },
+    "requests": {
+      "expected_requests": 50000,
+      "switch_after_n_items": 5000
+    },
+    "tokens": {
+      "input": "\"A Mouse in the House\" is a very classic cartoon by Tom & Jerry, faithful to their tradition but with jokes of its own. It is hysterical, hilarious, very entertaining and quite amusing. Artwork is of good quality either. This short isn't just about Tom trying to catch Jerry. Butch lives in the same house and he's trying to catch the mouse too, because «the's only going to be one cat in this house in the morning -- and that's the cat that catches the mouse».<br /><br />If you ask me, there are lots of funny gags in this cartoon. The funniest for me are, for example, when Mammy Two Shoes sees the two lazy cats sleeping and says sarcastically «I'm glad you're enjoying the siesta» and that she hopes they'resatisfied because she ain't, making the two cats gasp. Another funny gag is when Tom disguises himself as Mammy Two Shoes and slams Butch with a frying pan and then Butch does the same trick to Tom. Of course that, even funnier than this, is when the real Mammy Two Shoes appears and both (dumb!) cats think they are seeing each other disguised as Mammy and then they both attack her on the \"rear\" - lol. Naturally that she gets mad and once she gets mad, she isn't someone to mess with. But even Jerry doesn't win this time, because he is expelled by her too.",
+      "prompt": "You are a sentiment analysis assistant. Your job is to read movie reviews and classify their sentiment as either 'positive' or 'negative'. Only respond in this exact JSON format: {\"sentiment\": \"positive\"} or {\"sentiment\": \"negative\"}. Do not provide any explanation or additional text.",
+      "task_detection_method": "wrapper_prompt",
+      "wrapper_prompt": "\nYou are a powerful language model. You are given a user request consisting of a system prompt and a user message. Your task is as follows:\n\n1. Identify the type of input the user is providing: one of [\"text\", \"image\", \"table\", \"other\"]\n2. Infer what task you are expected to perform, choosing from: [\"sentiment classification\", \"summarization\", \"translation\", \"question answering\", \"information extraction\", \"topic modeling\", \"other\"]\n3. Solve the task that the user is giving you and put your response in a separate field called \"user_response\" which is in JSON format\n\nRespond with a JSON object containing:\n- \"input_type\"\n- \"task_type\"\n- \"user_response\" (JSON describing user response)\n",
+      "wrapped_requests_percent": 1,
+      "output": "{\"sentiment\": \"positive\"}",
+      "wrapped_output": "{\n  \"input_type\": \"text\",\n  \"task_type\": \"sentiment classification\",\n  \"user_response\": {\n    \"sentiment\": \"positive\"\n  }\n}",
+      "use_case": "imdb"
+    },
+    "dev": {
+      "model_dev_costs": 0.2217,
+      "dev_approach": "base"
+    },
+    "validation": {
+      "validation_requests_percent": 0.09
+    }
+  },
+  "GPT-5.5 vs BERT - 10,000,000": {
+    "models": {
+      "large_model": "gpt-5.5",
+      "small_model": "bert-80M"
+    },
+    "requests": {
+      "expected_requests": 10000000,
+      "switch_after_n_items": 5000
+    },
+    "tokens": {
+      "input": "\"A Mouse in the House\" is a very classic cartoon by Tom & Jerry, faithful to their tradition but with jokes of its own. It is hysterical, hilarious, very entertaining and quite amusing. Artwork is of good quality either. This short isn't just about Tom trying to catch Jerry. Butch lives in the same house and he's trying to catch the mouse too, because «the's only going to be one cat in this house in the morning -- and that's the cat that catches the mouse».<br /><br />If you ask me, there are lots of funny gags in this cartoon. The funniest for me are, for example, when Mammy Two Shoes sees the two lazy cats sleeping and says sarcastically «I'm glad you're enjoying the siesta» and that she hopes they'resatisfied because she ain't, making the two cats gasp. Another funny gag is when Tom disguises himself as Mammy Two Shoes and slams Butch with a frying pan and then Butch does the same trick to Tom. Of course that, even funnier than this, is when the real Mammy Two Shoes appears and both (dumb!) cats think they are seeing each other disguised as Mammy and then they both attack her on the \"rear\" - lol. Naturally that she gets mad and once she gets mad, she isn't someone to mess with. But even Jerry doesn't win this time, because he is expelled by her too.",
+      "prompt": "You are a sentiment analysis assistant. Your job is to read movie reviews and classify their sentiment as either 'positive' or 'negative'. Only respond in this exact JSON format: {\"sentiment\": \"positive\"} or {\"sentiment\": \"negative\"}. Do not provide any explanation or additional text.",
+      "task_detection_method": "wrapper_prompt",
+      "wrapper_prompt": "\nYou are a powerful language model. You are given a user request consisting of a system prompt and a user message. Your task is as follows:\n\n1. Identify the type of input the user is providing: one of [\"text\", \"image\", \"table\", \"other\"]\n2. Infer what task you are expected to perform, choosing from: [\"sentiment classification\", \"summarization\", \"translation\", \"question answering\", \"information extraction\", \"topic modeling\", \"other\"]\n3. Solve the task that the user is giving you and put your response in a separate field called \"user_response\" which is in JSON format\n\nRespond with a JSON object containing:\n- \"input_type\"\n- \"task_type\"\n- \"user_response\" (JSON describing user response)\n",
+      "wrapped_requests_percent": 1,
+      "output": "{\"sentiment\": \"positive\"}",
+      "wrapped_output": "{\n  \"input_type\": \"text\",\n  \"task_type\": \"sentiment classification\",\n  \"user_response\": {\n    \"sentiment\": \"positive\"\n  }\n}",
+      "use_case": "imdb"
+    },
+    "dev": {
+      "model_dev_costs": 0.2217,
+      "dev_approach": "base"
+    },
+    "validation": {
+      "validation_requests_percent": 0.09
+    }
+  },
+  "Llama 3.1 8B vs BERT - 10,000,000": {
     "models": {
       "large_model": "Llama-8B",
       "small_model": "bert-80M"
@@ -22,24 +73,24 @@
       "use_case": "imdb"
     },
     "dev": {
-      "model_dev_costs": 5,
-      "dev_approach": "s-500"
+      "model_dev_costs": 0.2217,
+      "dev_approach": "base"
     },
     "validation": {
       "validation_requests_percent": 0.09
     }
   },
-  "Sentiment Analysis (Example)": {
+  "Llama 3.1 8B vs BERT - 100,000": {
     "models": {
-      "large_model": "gpt-4.1",
+      "large_model": "Llama-8B",
       "small_model": "bert-80M"
     },
     "requests": {
-      "expected_requests": 1000000,
+      "expected_requests": 100000,
       "switch_after_n_items": 5000
     },
     "tokens": {
-      "input": "\"A Mouse in the House\" is a very classic cartoon by Tom & Jerry, faithful to their tradition but with jokes of its own. It is hysterical, hilarious, very entertaining and quite amusing. Artwork is of good quality either. This short isn't just about Tom trying to catch Jerry. Butch lives in the same house and he's trying to catch the mouse too, because «there's only going to be one cat in this house in the morning -- and that's the cat that catches the mouse».<br /><br />If you ask me, there are lots of funny gags in this cartoon. The funniest for me are, for example, when Mammy Two Shoes sees the two lazy cats sleeping and says sarcastically «I'm glad you're enjoying the siesta» and that she hopes they'resatisfied because she ain't, making the two cats gasp. Another funny gag is when Tom disguises himself as Mammy Two Shoes and slams Butch with a frying pan and then Butch does the same trick to Tom. Of course that, even funnier than this, is when the real Mammy Two Shoes appears and both (dumb!) cats think they are seeing each other disguised as Mammy and then they both attack her on the \\\"rear\\\" - lol. Naturally that she gets mad and once she gets mad, she isn't someone to mess with. But even Jerry doesn't win this time, because he is expelled by her too.",
+      "input": "\"A Mouse in the House\" is a very classic cartoon by Tom & Jerry, faithful to their tradition but with jokes of its own. It is hysterical, hilarious, very entertaining and quite amusing. Artwork is of good quality either. This short isn't just about Tom trying to catch Jerry. Butch lives in the same house and he's trying to catch the mouse too, because «the's only going to be one cat in this house in the morning -- and that's the cat that catches the mouse».<br /><br />If you ask me, there are lots of funny gags in this cartoon. The funniest for me are, for example, when Mammy Two Shoes sees the two lazy cats sleeping and says sarcastically «I'm glad you're enjoying the siesta» and that she hopes they'resatisfied because she ain't, making the two cats gasp. Another funny gag is when Tom disguises himself as Mammy Two Shoes and slams Butch with a frying pan and then Butch does the same trick to Tom. Of course that, even funnier than this, is when the real Mammy Two Shoes appears and both (dumb!) cats think they are seeing each other disguised as Mammy and then they both attack her on the \"rear\" - lol. Naturally that she gets mad and once she gets mad, she isn't someone to mess with. But even Jerry doesn't win this time, because he is expelled by her too.",
       "prompt": "You are a sentiment analysis assistant. Your job is to read movie reviews and classify their sentiment as either 'positive' or 'negative'. Only respond in this exact JSON format: {\"sentiment\": \"positive\"} or {\"sentiment\": \"negative\"}. Do not provide any explanation or additional text.",
       "task_detection_method": "wrapper_prompt",
       "wrapper_prompt": "\nYou are a powerful language model. You are given a user request consisting of a system prompt and a user message. Your task is as follows:\n\n1. Identify the type of input the user is providing: one of [\"text\", \"image\", \"table\", \"other\"]\n2. Infer what task you are expected to perform, choosing from: [\"sentiment classification\", \"summarization\", \"translation\", \"question answering\", \"information extraction\", \"topic modeling\", \"other\"]\n3. Solve the task that the user is giving you and put your response in a separate field called \"user_response\" which is in JSON format\n\nRespond with a JSON object containing:\n- \"input_type\"\n- \"task_type\"\n- \"user_response\" (JSON describing user response)\n",
@@ -49,38 +100,38 @@
       "use_case": "imdb"
     },
     "dev": {
-      "model_dev_costs": -1,
+      "model_dev_costs": 0.2217,
       "dev_approach": "base"
     },
     "validation": {
-      "validation_requests_percent": 0.0
+      "validation_requests_percent": 0.09
     }
   },
-  "2 Sentiment Analysis (Example)": {
+  "empty models": {
     "models": {
-      "large_model": "gpt-4.1",
-      "small_model": "bert-80M"
+      "large_model": "none",
+      "small_model": "none"
     },
     "requests": {
-      "expected_requests": 1000000,
-      "switch_after_n_items": 100000
+      "expected_requests": 50000,
+      "switch_after_n_items": 5000
     },
     "tokens": {
-      "input": "\"A Mouse in the House\" ",
+      "input": "\"A Mouse in the House\" is a very classic cartoon by Tom & Jerry, faithful to their tradition but with jokes of its own. It is hysterical, hilarious, very entertaining and quite amusing. Artwork is of good quality either. This short isn't just about Tom trying to catch Jerry. Butch lives in the same house and he's trying to catch the mouse too, because «the's only going to be one cat in this house in the morning -- and that's the cat that catches the mouse».<br /><br />If you ask me, there are lots of funny gags in this cartoon. The funniest for me are, for example, when Mammy Two Shoes sees the two lazy cats sleeping and says sarcastically «I'm glad you're enjoying the siesta» and that she hopes they'resatisfied because she ain't, making the two cats gasp. Another funny gag is when Tom disguises himself as Mammy Two Shoes and slams Butch with a frying pan and then Butch does the same trick to Tom. Of course that, even funnier than this, is when the real Mammy Two Shoes appears and both (dumb!) cats think they are seeing each other disguised as Mammy and then they both attack her on the \"rear\" - lol. Naturally that she gets mad and once she gets mad, she isn't someone to mess with. But even Jerry doesn't win this time, because he is expelled by her too.",
       "prompt": "You are a sentiment analysis assistant. Your job is to read movie reviews and classify their sentiment as either 'positive' or 'negative'. Only respond in this exact JSON format: {\"sentiment\": \"positive\"} or {\"sentiment\": \"negative\"}. Do not provide any explanation or additional text.",
       "task_detection_method": "wrapper_prompt",
       "wrapper_prompt": "\nYou are a powerful language model. You are given a user request consisting of a system prompt and a user message. Your task is as follows:\n\n1. Identify the type of input the user is providing: one of [\"text\", \"image\", \"table\", \"other\"]\n2. Infer what task you are expected to perform, choosing from: [\"sentiment classification\", \"summarization\", \"translation\", \"question answering\", \"information extraction\", \"topic modeling\", \"other\"]\n3. Solve the task that the user is giving you and put your response in a separate field called \"user_response\" which is in JSON format\n\nRespond with a JSON object containing:\n- \"input_type\"\n- \"task_type\"\n- \"user_response\" (JSON describing user response)\n",
       "wrapped_requests_percent": 1,
       "output": "{\"sentiment\": \"positive\"}",
       "wrapped_output": "{\n  \"input_type\": \"text\",\n  \"task_type\": \"sentiment classification\",\n  \"user_response\": {\n    \"sentiment\": \"positive\"\n  }\n}",
-      "use_case": "short-imdb"
+      "use_case": "imdb"
     },
     "dev": {
-      "model_dev_costs": 4.0,
+      "model_dev_costs": 0.2217,
       "dev_approach": "base"
     },
     "validation": {
-      "validation_requests_percent": 0.0
+      "validation_requests_percent": 0.09
     }
   }
 }
