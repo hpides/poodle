@@ -885,10 +885,10 @@
       <select onchange="SIM_SPEED = +this.value;"
         style="padding:3px 6px; font-size:0.8rem; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); cursor:pointer;">
         <option value="1">1x</option>
-        <option value="10" selected>10x</option>
+        <option value="10">10x</option>
         <option value="20">20x</option>
         <option value="50">50x</option>
-        <option value="100">100x</option>
+        <option value="100" selected>100x</option>
       </select>
     </div>
   </header>
@@ -1807,8 +1807,10 @@ async function loadCardData() {
     fetch('/api/proxy-ft-small').then(r => r.json()).then(d => { proxyFtSmall = d; }),
     fetch('/api/model-mapping').then(r => r.json()).then(d => { modelMapping = d; }),
   ]);
-  // proxy-5000 loads the same JSON as proxy but should default to 5000 items
-  cardData['proxy-5000'].data_collection_items = 5000;
+  // proxy (top) and proxy-5000 (bottom) load the same JSON but default to different item counts
+  cardData['proxy'].data_collection_items      = 5000;
+  cardData['proxy'].search_start_items         = 1000;
+  cardData['proxy-5000'].data_collection_items = 1000;
   cardData['proxy-5000'].search_start_items    = 1000;
 }
 
@@ -1940,8 +1942,8 @@ function tokenActive(cardId, token) {
 function abortSignal(cardId) {
   return new Promise(resolve => { _abortResolvers[cardId] = resolve; });
 }
-// Simulation speed multiplier — controlled by the Speed slider (1x–5x)
-let SIM_SPEED = 10;
+// Simulation speed multiplier — controlled by the Speed slider (1x–100x)
+let SIM_SPEED = 100;
 
 // like sleep(ms) but resolves early if aborted, and respects SIM_SPEED
 function sleepC(ms, abort) {
