@@ -11,6 +11,10 @@ async def screenshot():
             viewport={"width": WIDTH, "height": HEIGHT},
             device_scale_factor=3
         )
+        # Force light mode: the page reads this from localStorage on load
+        await context.add_init_script(
+            "localStorage.setItem('poodle-theme', 'light');"
+        )
         page = await context.new_page()
         await page.goto("http://localhost:8080", wait_until="networkidle")
 
