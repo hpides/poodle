@@ -33,37 +33,37 @@ MODEL_PRICING_PER_1M = {  # prices in $/1M tokens
     Model.BERT_80M: {INPUT: 0.01, OUTPUT: 0.01},
     # Ref
     Model.LLAMA_8B: {INPUT: 0.20, OUTPUT: 0.20},
-    # https://cloud.google.com/vertex-ai/generative-ai/pricing
-    # - gemini 2.5 flash-lite: 0.10\$ (input), 0.40\$ (output)
-    Model.GEMINI_2_5_FLASH_LITE: {INPUT: 0.10, OUTPUT: 0.40},
-    # - gemini 2.5 flash: 0.30\$ (input), 2.50\$ (output)
-    Model.GEMINI_2_5_FLASH: {INPUT: 0.30, OUTPUT: 2.50},
-    # - gemini 2.5 pro (<=200k context): 1.25\$ (input), 10.00\$ (output)
-    Model.GEMINI_2_5_PRO: {INPUT: 1.25, OUTPUT: 10.00},
-    # - gemini 3 flash preview: 0.50\$ (input), 3.00\$ (output)
-    Model.GEMINI_3_FLASH_PREVIEW: {INPUT: 0.50, OUTPUT: 3.00},
-    # https://www.anthropic.com/pricing#api
-    # - claude haiku 4.5: 1.00\$ (input), 5.00\$ (output)
-    Model.CLAUDE_HAIKU_4_5: {INPUT: 1.00, OUTPUT: 5.00},
-    # - claude sonnet 5: 3.00\$ (input), 15.00\$ (output)
-    Model.CLAUDE_SONNET_5: {INPUT: 3.00, OUTPUT: 15.00},
-    # - claude opus 5: 5.00\$ (input), 25.00\$ (output)
-    Model.CLAUDE_OPUS_5: {INPUT: 5.00, OUTPUT: 25.00},
     # https://platform.openai.com/docs/pricing
+    # - gpt 5.5: 5.00\$ (input), 30.00\$ (output)
+    Model.GPT_5_5: {INPUT: 5.00, OUTPUT: 30.00},
     # - gpt 4.1: 2.00\$ (input), 8.00\$ (output), batch prices half
     Model.GPT_4_1: {INPUT: 2, OUTPUT: 8},
+    # - gpt 5.4-mini: 0.75\$ (input), 4.50\$ (output)
+    Model.GPT_5_4_MINI: {INPUT: 0.75, OUTPUT: 4.50},
     # - gpt 4.1-mini: 0.40\$ (input), 1.60\$ (output), batch prices half
     Model.GPT_4_1_MINI: {INPUT: 0.4, OUTPUT: 1.6},
     # - gpt 4.1-nano: 0.10\$ (input), 0.40\$ (output), batch prices half
     Model.GPT_4_1_NANO: {INPUT: 0.1, OUTPUT: 0.4},
-    # - gpt 5.5: 5.00\$ (input), 30.00\$ (output)
-    Model.GPT_5_5: {INPUT: 5.00, OUTPUT: 30.00},
-    # - gpt 5.4-mini: 0.75\$ (input), 4.50\$ (output)
-    Model.GPT_5_4_MINI: {INPUT: 0.75, OUTPUT: 4.50},
-    # https://api.together.ai/models/meta-llama/Llama-3.3-70B-Instruct-Turbo
-    Model.LLAMA_70B_TURBO: {INPUT: 0.88, OUTPUT: 0.88},
+    # https://cloud.google.com/vertex-ai/generative-ai/pricing
+    # - gemini 2.5 pro (<=200k context): 1.25\$ (input), 10.00\$ (output)
+    Model.GEMINI_2_5_PRO: {INPUT: 1.25, OUTPUT: 10.00},
+    # - gemini 3 flash preview: 0.50\$ (input), 3.00\$ (output)
+    Model.GEMINI_3_FLASH_PREVIEW: {INPUT: 0.50, OUTPUT: 3.00},
+    # - gemini 2.5 flash: 0.30\$ (input), 2.50\$ (output)
+    Model.GEMINI_2_5_FLASH: {INPUT: 0.30, OUTPUT: 2.50},
+    # - gemini 2.5 flash-lite: 0.10\$ (input), 0.40\$ (output)
+    Model.GEMINI_2_5_FLASH_LITE: {INPUT: 0.10, OUTPUT: 0.40},
+    # https://www.anthropic.com/pricing#api
+    # - claude opus 5: 5.00\$ (input), 25.00\$ (output)
+    Model.CLAUDE_OPUS_5: {INPUT: 5.00, OUTPUT: 25.00},
+    # - claude sonnet 5: 3.00\$ (input), 15.00\$ (output)
+    Model.CLAUDE_SONNET_5: {INPUT: 3.00, OUTPUT: 15.00},
+    # - claude haiku 4.5: 1.00\$ (input), 5.00\$ (output)
+    Model.CLAUDE_HAIKU_4_5: {INPUT: 1.00, OUTPUT: 5.00},
     # https://api.together.ai/models/meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo
     Model.LLAMA_405B_TURBO: {INPUT: 3.50, OUTPUT: 3.50},
+    # https://api.together.ai/models/meta-llama/Llama-3.3-70B-Instruct-Turbo
+    Model.LLAMA_70B_TURBO: {INPUT: 0.88, OUTPUT: 0.88},
 }
 
 # Custom models added at runtime (string-keyed, injected by the UI server)
